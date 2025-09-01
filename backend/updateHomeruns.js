@@ -117,6 +117,5 @@ async function runUpdate() {
   await updateDatabaseWithHomeruns(hitters);
 }
 
-runUpdate();
-
-module.exports.default = getTodayHomeRunHitters;
+// 👉 Instead of running immediately, export the function
+module.exports = { runUpdate, getTodayHomeRunHitters };

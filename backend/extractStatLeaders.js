@@ -1,3 +1,4 @@
+// updateStatLeaders.js
 const { fetch } = require("undici");
 const { MongoClient } = require("mongodb");
 const { DateTime } = require("luxon");
@@ -7,7 +8,8 @@ const client = new MongoClient(uri);
 const dbName = "mlb_data";
 
 // Leaderboard URL for Home Runs only
-const hrLeaderUrl = "https://statsapi.mlb.com/api/v1/stats/leaders?leaderCategories=homeRuns&season=2025&limit=10&playerPool=ALL";
+const hrLeaderUrl =
+  "https://statsapi.mlb.com/api/v1/stats/leaders?leaderCategories=homeRuns&season=2025&limit=10&playerPool=ALL";
 
 // Use Luxon to get today's date in Eastern Time
 const getEasternDate = () =>
@@ -17,7 +19,7 @@ async function extractTopHittersWithFullStats() {
   try {
     console.log("📊 Fetching top HR hitters...");
 
-    const today = getEasternDate(); // Get fixed date here
+    const today = getEasternDate(); // Fixed Eastern date
 
     // Step 1: Get Top HR Hitters
     const hrResponse = await fetch(hrLeaderUrl);
@@ -35,7 +37,7 @@ async function extractTopHittersWithFullStats() {
 
     let players = [];
 
-    // Step 2: For each player, fetch full stats by playerId
+    // Step 2: For each player, fetch full stats
     for (const leader of hrLeaders) {
       const playerId = leader.person.id;
       const playerName = leader.person.fullName;
@@ -55,7 +57,6 @@ async function extractTopHittersWithFullStats() {
       const statsData = await statsRes.json();
       const seasonStats = statsData.stats[0]?.splits[0]?.stat || {};
 
-      // Safely convert string-based stats to numbers
       const safeParseFloat = (val) => (val ? parseFloat(val) : 0);
       const safeParseInt = (val) => (val ? parseInt(val, 10) : 0);
 
@@ -70,11 +71,11 @@ async function extractTopHittersWithFullStats() {
         OPS: safeParseFloat(seasonStats.ops).toFixed(3),
         SB: safeParseInt(seasonStats.stolenBases),
         abPerHr: safeParseFloat(seasonStats.atBatsPerHomeRun).toFixed(2),
-        date: today, // Use fixed Eastern Time date
+        date: today,
       });
     }
 
-    // Sort by HR descending
+    // Sort by HR
     players.sort((a, b) => b.HR - a.HR);
 
     // Assign ranks with tie handling
@@ -92,7 +93,6 @@ async function extractTopHittersWithFullStats() {
         rank: tied ? `T-${rank}` : rank,
       };
     });
-
   } catch (err) {
     console.error("🚨 Error fetching player stats:", err.message);
     return [];
@@ -104,7 +104,7 @@ async function updateDatabaseWithStatLeaders(players) {
     await client.connect();
     const db = client.db(dbName);
     const collection = db.collection("leaderboard");
-    const today = getEasternDate(); // Consistent fixed date
+    const today = getEasternDate();
 
     if (players.length > 0) {
       await collection.deleteMany({ date: today });
@@ -113,10 +113,10 @@ async function updateDatabaseWithStatLeaders(players) {
     } else {
       console.log("❌ No players to insert");
     }
-
-    await client.close();
   } catch (err) {
     console.error("❌ DB update error:", err.message);
+  } finally {
+    await client.close();
   }
 }
 
@@ -126,11 +126,5 @@ async function updateStatLeaders() {
   await updateDatabaseWithStatLeaders(players);
 }
 
-// Run manually if called directly
-if (require.main === module) {
-  updateStatLeaders()
-    .then(() => console.log("🏁 Stat update complete"))
-    .catch(console.error);
-}
-
-module.exports.default = updateStatLeaders;
+// 👉 Export instead of running automatically
+module.exports = { updateStatLeaders, extractTopHittersWithFullStats };
