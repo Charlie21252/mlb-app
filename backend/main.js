@@ -4,9 +4,6 @@ const bodyParser = require("body-parser");
 const { MongoClient } = require("mongodb");
 const { DateTime } = require("luxon");
 
-// Import prediction function
-//const runPrediction = require("./predictHomerunInsight");
-
 // Import pitcher update logic
 const getTodaysPitchers = require("./updatePitchers").default;
 
@@ -14,10 +11,12 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const port = 8080;
-const host = "localhost";
+// Use PORT from Render or default 8080
+const port = process.env.PORT || 8080;
+const host = "0.0.0.0"; // Use 0.0.0.0 for Render
 
-const url = "mongodb://127.0.0.1:27017";
+// MongoDB Atlas URI from environment variables
+const url = process.env.MONGODB_URI;
 const dbName = "mlb_data";
 const client = new MongoClient(url);
 
@@ -29,23 +28,14 @@ let db;
 app.get("/daily_homeruns", async (req, res) => {
   try {
     let { date } = req.query;
+    const testMode = process.env.TEST_MODE === "true";
 
-    const testMode = false;
-    if (testMode) {
-      date = "2025-05-23";
-    }
-
-    if (!date && !testMode) {
-      // Use Eastern Time
-      date = DateTime.now().setZone("America/New_York").toISODate();
-    }
+    if (testMode) date = "2025-05-23";
+    if (!date && !testMode) date = DateTime.now().setZone("America/New_York").toISODate();
 
     console.log("📅 Fetching daily HRs for:", date);
 
-    const results = await db.collection("daily_homeruns")
-      .find({ date })
-      .toArray();
-
+    const results = await db.collection("daily_homeruns").find({ date }).toArray();
     const sortedResults = results.sort((a, b) => (b.totalDistance || 0) - (a.totalDistance || 0));
     res.status(200).json(sortedResults);
 
@@ -61,17 +51,10 @@ app.get("/leaderboard", async (req, res) => {
     const today = DateTime.now().setZone("America/New_York").toISODate();
     console.log("📅 Fetching leaderboard for:", today);
 
-    const leaders = await db.collection("leaderboard")
-      .find({ date: today })
-      .sort({ HR: -1 })
-      .toArray();
-
-    if (leaders.length === 0) {
-      return res.status(404).json({ error: "No leaderboard data available for today" });
-    }
+    const leaders = await db.collection("leaderboard").find({ date: today }).sort({ HR: -1 }).toArray();
+    if (leaders.length === 0) return res.status(404).json({ error: "No leaderboard data available for today" });
 
     res.status(200).json(leaders);
-
   } catch (err) {
     console.error("🚨 Error fetching leaderboard:", err.message);
     res.status(500).json({ error: "Error fetching leaderboard" });
@@ -82,34 +65,22 @@ app.get("/leaderboard", async (req, res) => {
 app.get("/pitchers", async (req, res) => {
   try {
     console.log("🔄 Fetching today's starting pitchers...");
-
-    const pitcherData = await getTodaysPitchers(); // Runs the pitcher update logic
-
-    // Optional: Store in MongoDB
-    // await db.collection("daily_pitchers").deleteMany({ date: today });
-    // await db.collection("daily_pitchers").insertMany(pitcherData.map(data => ({
-    //   ...data,
-    //   date: today
-    // })));
-
+    const pitcherData = await getTodaysPitchers();
     res.status(200).json(pitcherData);
-
   } catch (err) {
     console.error("🚨 Error fetching pitcher data:", err.message);
     res.status(500).json({ error: "Failed to fetch pitcher data" });
   }
 });
 
-
 // ---------------- START SERVER ----------------
-
 async function startServer() {
   try {
     await client.connect();
     db = client.db(dbName);
-    console.log("🔌 Connected to MongoDB");
+    console.log("🔌 Connected to MongoDB Atlas");
 
-    app.listen(port, () => {
+    app.listen(port, host, () => {
       console.log(`🚀 App listening at http://${host}:${port}`);
     });
 
