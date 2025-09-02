@@ -3,9 +3,11 @@ const { fetch } = require("undici");
 const { MongoClient } = require("mongodb");
 
 // MongoDB connection
-const uri = "mongodb://127.0.0.1:27017";
+const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri);
 const dbName = "mlb_data";
+
+let db;
 
 // Import extractGamePks function
 const extractGamePks = require("./extractGamePks").default;
@@ -70,7 +72,7 @@ async function updateDatabaseWithHomeruns(homeruns) {
   try {
     await dbClient.connect();
     const db = dbClient.db(dbName);
-    const collection = db.collection("daily_homeruns");
+    const collection = db.collection("initial connection");
 
     // Clear today's data
     await collection.deleteMany({ date: today });
