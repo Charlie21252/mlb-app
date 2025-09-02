@@ -16,6 +16,7 @@ const port = process.env.PORT || 8080;
 const host = "0.0.0.0"; // Use 0.0.0.0 for Render
 
 // MongoDB Atlas URI from environment variables
+require("dotenv").config();
 const url = process.env.MONGODB_URI;
 const dbName = "mlb_data";
 const client = new MongoClient(url);
