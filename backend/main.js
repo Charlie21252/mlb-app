@@ -36,7 +36,7 @@ app.get("/daily_homeruns", async (req, res) => {
 
     console.log("📅 Fetching daily HRs for:", date);
 
-    const results = await db.collection("daily_homeruns").find({ date }).toArray();
+    const results = await db.collection("initial connection").find({ date }).toArray();
     const sortedResults = results.sort((a, b) => (b.totalDistance || 0) - (a.totalDistance || 0));
     res.status(200).json(sortedResults);
 

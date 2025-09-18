@@ -1,14 +1,13 @@
 // updateStatLeaders.js
+require('dotenv').config();
 const { fetch } = require("undici");
 const { MongoClient } = require("mongodb");
 const { DateTime } = require("luxon");
 
 const uri = process.env.MONGODB_URI;
-const client = new MongoClient(uri);
+if (!uri) throw new Error("MONGODB_URI environment variable is missing!");
+
 const dbName = "mlb_data";
-
-let db;
-
 
 // Leaderboard URL for Home Runs only
 const hrLeaderUrl =
@@ -22,7 +21,7 @@ async function extractTopHittersWithFullStats() {
   try {
     console.log("📊 Fetching top HR hitters...");
 
-    const today = getEasternDate(); // Fixed Eastern date
+    const today = getEasternDate();
 
     // Step 1: Get Top HR Hitters
     const hrResponse = await fetch(hrLeaderUrl);
@@ -38,9 +37,9 @@ async function extractTopHittersWithFullStats() {
       return [];
     }
 
-    let players = [];
+    const players = [];
 
-    // Step 2: For each player, fetch full stats
+    // Step 2: For each player, fetch full stats sequentially
     for (const leader of hrLeaders) {
       const playerId = leader.person.id;
       const playerName = leader.person.fullName;
@@ -96,6 +95,7 @@ async function extractTopHittersWithFullStats() {
         rank: tied ? `T-${rank}` : rank,
       };
     });
+
   } catch (err) {
     console.error("🚨 Error fetching player stats:", err.message);
     return [];
@@ -103,19 +103,27 @@ async function extractTopHittersWithFullStats() {
 }
 
 async function updateDatabaseWithStatLeaders(players) {
+  const today = getEasternDate();
+
+  if (players.length === 0) {
+    console.log("❌ No players to insert");
+    return;
+  }
+
+  const client = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
+
   try {
     await client.connect();
     const db = client.db(dbName);
     const collection = db.collection("leaderboard");
-    const today = getEasternDate();
 
-    if (players.length > 0) {
-      await collection.deleteMany({ date: today });
-      await collection.insertMany(players);
-      console.log(`✅ Inserted ${players.length} players`);
-    } else {
-      console.log("❌ No players to insert");
-    }
+    // Clear today's data
+    await collection.deleteMany({ date: today });
+
+    // Insert new stats
+    await collection.insertMany(players);
+    console.log(`✅ Inserted ${players.length} players`);
+
   } catch (err) {
     console.error("❌ DB update error:", err.message);
   } finally {
@@ -129,5 +137,4 @@ async function updateStatLeaders() {
   await updateDatabaseWithStatLeaders(players);
 }
 
-// 👉 Export instead of running automatically
 module.exports = { updateStatLeaders, extractTopHittersWithFullStats };
