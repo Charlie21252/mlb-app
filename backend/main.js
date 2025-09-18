@@ -13,7 +13,7 @@ app.use(bodyParser.json());
 
 // Use PORT from Render or default 8080
 const port = process.env.PORT || 8080;
-const host = "0.0.0.0"; // Use 0.0.0.0 for Render
+const host = "0.0.0.0";
 
 // MongoDB Atlas URI from environment variables
 require("dotenv").config();
