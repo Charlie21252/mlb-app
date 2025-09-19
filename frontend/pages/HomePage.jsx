@@ -31,7 +31,7 @@ export default function HomePage() {
 
       try {
         const response = await fetch(
-          `http://localhost:8080/daily_homeruns?date=${selectedDate}`
+          `https://mlb-app-k5mr.onrender.com/daily_homeruns?date=${selectedDate}`
         );
         if (!response.ok) throw new Error("No data found for this date");
 

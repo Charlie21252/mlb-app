@@ -80,7 +80,7 @@ export default function Leaderboard() {
       setLoading(true);
       setError("");
       try {
-        const response = await fetch("http://localhost:8080/leaderboard");
+        const response = await fetch("https://mlb-app-k5mr.onrender.com/leaderboard");
         if (!response.ok) throw new Error("No data found");
         const data = await response.json();
         setLeaders(data);
