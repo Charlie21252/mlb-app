@@ -4,40 +4,40 @@ const bodyParser = require("body-parser");
 const { MongoClient } = require("mongodb");
 const { DateTime } = require("luxon");
 
-// Import update functions
+// Import pitcher logic (still using .default — may need same fix)
 const getTodaysPitchers = require("./updatePitchers").default;
 
-// Load environment variables
 require("dotenv").config();
 
 const app = express();
+
+// ✅ FIX: Remove trailing space in origin URL
 app.use(cors({
   origin: [
-    "https://charlies-mlb-hafp6xoz8-charlie-hristovs-projects.vercel.app", // ← Replace with your actual Vercel app URL
-    "http://localhost:8080"               // For local dev
+    "https://charlies-mlb-hafp6xoz8-charlie-hristovs-projects.vercel.app", // ← No space!
+    "http://localhost:8080"
   ],
   methods: ["GET"]
 }));
+
 app.use(bodyParser.json());
 
-// Use PORT from Render or default 8080
 const port = process.env.PORT || 8080;
-const host = "0.0.0.0"; // Required for Render
+const host = "0.0.0.0";
 
-// MongoDB Atlas URI + connection options
 const url = process.env.MONGODB_URI;
 const dbName = "mlb_data";
 
-// Add critical connection options to avoid TLS/IPv6 issues on Render
+// ✅ Keep connection options — they prevent TLS/IPv6 errors
 const client = new MongoClient(url, {
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
-  family: 4, // 👉 Forces IPv4 – fixes common "tlsv1 alert internal error"
+  family: 4,
 });
 
 let db;
 
-// 🔐 Admin Auth Middleware
+// 🔐 Admin Key Middleware
 function requireAdminKey(req, res, next) {
   const key = req.query.key;
   if (!key || key !== process.env.ADMIN_KEY) {
@@ -48,12 +48,12 @@ function requireAdminKey(req, res, next) {
 
 // ---------------- ADMIN ROUTES ----------------
 
-// GET /admin/update-homeruns?key=SECRET
+// ✅ FIXED: Removed .default()
 app.get("/admin/update-homeruns", requireAdminKey, async (req, res) => {
   try {
     console.log("🔄 Running updateHomeruns.js...");
-    const updateModule = require("./updateHomeruns");
-    await updateModule.default(); // Adjust if export style differs
+    const updateHomeruns = require("./updateHomeruns"); // Load module
+    await updateHomeruns(); // Call directly
     console.log("✅ Homerun data updated successfully");
     res.status(200).json({ success: true, message: "Homerun data updated" });
   } catch (err) {
@@ -62,12 +62,12 @@ app.get("/admin/update-homeruns", requireAdminKey, async (req, res) => {
   }
 });
 
-// GET /admin/update-leaderboard?key=SECRET
+// ✅ FIXED: Removed .default()
 app.get("/admin/update-leaderboard", requireAdminKey, async (req, res) => {
   try {
     console.log("🔄 Running updateLeaderboard.js...");
-    const updateModule = require("./updateLeaderboard");
-    await updateModule.default(); // Adjust if needed
+    const updateLeaderboard = require("./updateLeaderboard");
+    await updateLeaderboard();
     console.log("✅ Leaderboard updated successfully");
     res.status(200).json({ success: true, message: "Leaderboard updated" });
   } catch (err) {
@@ -78,7 +78,6 @@ app.get("/admin/update-leaderboard", requireAdminKey, async (req, res) => {
 
 // ---------------- PUBLIC ROUTES ----------------
 
-// GET /daily_homeruns?date=YYYY-MM-DD
 app.get("/daily_homeruns", async (req, res) => {
   try {
     let { date } = req.query;
@@ -91,7 +90,7 @@ app.get("/daily_homeruns", async (req, res) => {
 
     console.log("📅 Fetching daily HRs for:", date);
 
-    // ✅ FIX: Change collection name from "initial connection" → real name
+    // ✅ Make sure "homeruns" collection exists in Atlas
     const results = await db.collection("homeruns").find({ date }).toArray();
     const sortedResults = results.sort((a, b) => (b.totalDistance || 0) - (a.totalDistance || 0));
     res.status(200).json(sortedResults);
@@ -102,7 +101,6 @@ app.get("/daily_homeruns", async (req, res) => {
   }
 });
 
-// GET /leaderboard
 app.get("/leaderboard", async (req, res) => {
   try {
     const today = DateTime.now().setZone("America/New_York").toISODate();
@@ -120,7 +118,6 @@ app.get("/leaderboard", async (req, res) => {
   }
 });
 
-// GET /pitchers
 app.get("/pitchers", async (req, res) => {
   try {
     console.log("🔄 Fetching today's starting pitchers...");
@@ -132,7 +129,7 @@ app.get("/pitchers", async (req, res) => {
   }
 });
 
-// Optional: Friendly welcome at root
+// ✅ Friendly root route
 app.get("/", (req, res) => {
   res.status(200).json({
     message: "⚾ MLB Stats API is running!",
@@ -148,7 +145,6 @@ app.get("/", (req, res) => {
 
 // ---------------- START SERVER ----------------
 async function startServer() {
-  // Validate required environment variables
   if (!url) {
     console.error("🚨 MONGODB_URI is missing! Set it in environment variables.");
     process.exit(1);
@@ -165,9 +161,8 @@ async function startServer() {
 
     app.listen(port, host, () => {
       console.log(`🚀 App listening at http://${host}:${port}`);
-      console.log(`💡 Trigger updates via:`);
-      console.log(`   https://mlb-app-k5mr.onrender.com/admin/update-homeruns?key=${process.env.ADMIN_KEY}`);
-      console.log(`   https://mlb-app-k5mr.onrender.com/admin/update-leaderboard?key=${process.env.ADMIN_KEY}`);
+      console.log(`💡 Update homeruns: /admin/update-homeruns?key=${process.env.ADMIN_KEY}`);
+      console.log(`💡 Update leaderboard: /admin/update-leaderboard?key=${process.env.ADMIN_KEY}`);
     });
 
   } catch (err) {
