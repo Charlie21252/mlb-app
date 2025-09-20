@@ -3,13 +3,14 @@ require('dotenv').config();
 const { fetch } = require("undici");
 const { MongoClient } = require("mongodb");
 const { DateTime } = require("luxon");
-const { extractGamePks } = require("./extractGamePks");
 
 // MongoDB connection
 const uri = process.env.MONGODB_URI;
 if (!uri) throw new Error("MONGODB_URI environment variable is missing!");
 
 const dbName = "mlb_data";
+
+const extractGamePks = require("./extractGamePks").default;
 
 // Helper: Eastern Time ISO date
 const getEasternDate = () =>
