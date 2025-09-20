@@ -23,23 +23,57 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [selectedDate, setSelectedDate] = useState(getLocalDate());
   const [isToday, setIsToday] = useState(true);
+  const [debugInfo, setDebugInfo] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError("");
+      setDebugInfo("");
 
       try {
+        // Better API URL detection
+        const isDevelopment = 
+          window.location.hostname === "localhost" || 
+          window.location.hostname === "127.0.0.1" ||
+          process.env.NODE_ENV === "development";
+
+        const API_BASE_URL = isDevelopment 
+          ? "http://localhost:8080" 
+          : "https://mlb-app-k5mr.onrender.com";
+
+        setDebugInfo(`Using API: ${API_BASE_URL}`);
+        console.log(`🔗 Calling API: ${API_BASE_URL}/daily_homeruns?date=${selectedDate}`);
+
         const response = await fetch(
-          `https://mlb-app-k5mr.onrender.com/daily_homeruns?date=${selectedDate}`
+          `${API_BASE_URL}/daily_homeruns?date=${selectedDate}`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
         );
-        if (!response.ok) throw new Error("No data found for this date");
+
+        console.log(`📊 Response status: ${response.status}`);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ API Error: ${response.status} - ${errorText}`);
+          throw new Error(`API returned ${response.status}: ${errorText}`);
+        }
 
         const data = await response.json();
+        console.log(`📈 Received data:`, data);
+        
         setHomeruns(data);
+        setDebugInfo(`Found ${data.length} home runs for ${selectedDate}`);
+        
       } catch (err) {
-        setError("Could not load homers for this date");
-        console.error(err);
+        const errorMsg = `Failed to load data: ${err.message}`;
+        setError(errorMsg);
+        setDebugInfo(`Error: ${err.message}`);
+        console.error('🚨 Fetch error:', err);
       } finally {
         setLoading(false);
       }
@@ -64,6 +98,41 @@ export default function HomePage() {
     const yesterday = getYesterdayDate();
     setSelectedDate(yesterday);
     setIsToday(false);
+  };
+
+  // Manual refresh button for testing
+  const handleManualRefresh = async () => {
+    setLoading(true);
+    setError("");
+    
+    try {
+      const isDevelopment = 
+        window.location.hostname === "localhost" || 
+        window.location.hostname === "127.0.0.1";
+
+      const API_BASE_URL = isDevelopment 
+        ? "http://localhost:8080" 
+        : "https://mlb-app-k5mr.onrender.com";
+
+      // Trigger manual update
+      console.log('🔄 Triggering manual update...');
+      const updateResponse = await fetch(`${API_BASE_URL}/update-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (updateResponse.ok) {
+        console.log('✅ Manual update successful');
+        // Wait a bit then refetch data
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        console.error('❌ Manual update failed:', updateResponse.status);
+      }
+    } catch (err) {
+      console.error('🚨 Manual update error:', err);
+    }
   };
 
   return (
@@ -143,13 +212,33 @@ export default function HomePage() {
 
       {/* Error */}
       {error && (
-        <p style={{ color: "red", textAlign: "center", fontSize: "1.1rem" }}>{error}</p>
+        <div style={{ 
+          color: "red", 
+          textAlign: "center", 
+          fontSize: "1.1rem",
+          backgroundColor: "#ffe6e6",
+          padding: "15px",
+          borderRadius: "8px",
+          margin: "20px auto",
+          maxWidth: "600px",
+          border: "1px solid #ffcccc"
+        }}>
+          <strong>Error:</strong> {error}
+          <br />
+          <small style={{ color: "#666" }}>
+            Check the browser console (F12) for more details
+          </small>
+        </div>
       )}
 
       {/* No Data */}
       {!loading && !error && homeruns.length === 0 && (
         <p style={{ textAlign: "center", fontStyle: "italic", color: "#777" }}>
           No homeruns recorded for {selectedDate} yet...
+          <br />
+          <small style={{ color: "#999" }}>
+            Try the "Force Update" button to refresh data from MLB API
+          </small>
         </p>
       )}
 
