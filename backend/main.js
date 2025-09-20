@@ -7,10 +7,8 @@ const { DateTime } = require("luxon");
 
 // Import update functions
 const { runUpdate } = require("./updateHomeruns");
-const { updateStatLeaders } = require("./extractStatLeaders");
-
-// Import pitcher update logic
-const getTodaysPitchers = require("./updatePitchers").default;
+const { updateStatLeaders } = require("./updateStatLeaders");
+const { updateStartingPitchers, getTodaysStartingPitchers } = require("./updatePitchers");
 
 const app = express();
 app.use(cors());
@@ -40,6 +38,9 @@ async function runScheduledUpdates() {
     
     console.log("🏆 Updating leaderboard...");
     await updateStatLeaders();
+    
+    console.log("⚾ Updating starting pitchers...");
+    await updateStartingPitchers();
     
     console.log("✅ All scheduled updates completed successfully");
   } catch (err) {
@@ -102,7 +103,7 @@ app.get("/leaderboard", async (req, res) => {
 app.get("/pitchers", async (req, res) => {
   try {
     console.log("🔄 Fetching today's starting pitchers...");
-    const pitcherData = await getTodaysPitchers();
+    const pitcherData = await getTodaysStartingPitchers();
     res.status(200).json(pitcherData);
   } catch (err) {
     console.error("🚨 Error fetching pitcher data:", err.message);
@@ -117,10 +118,11 @@ app.post("/update-data", async (req, res) => {
     
     await runUpdate();
     await updateStatLeaders();
+    await updateStartingPitchers();
     
     res.json({ 
       success: true, 
-      message: "Data updated successfully",
+      message: "All data updated successfully",
       timestamp: new Date().toISOString()
     });
   } catch (err) {

@@ -1,6 +1,15 @@
+// updatePitchers.js
+require('dotenv').config();
 const { fetch } = require("undici");
+const { MongoClient } = require("mongodb");
 const { DateTime } = require("luxon");
-const extractGamePks = require("./extractGamePks").default;
+const { extractGamePks } = require("./extractGamePks");
+
+// MongoDB connection
+const uri = process.env.MONGODB_URI;
+if (!uri) throw new Error("MONGODB_URI environment variable is missing!");
+
+const dbName = "mlb_data";
 
 // Helper: Eastern Time ISO date
 const getEasternDate = () =>
@@ -25,11 +34,15 @@ async function getPitchingStats(pitcherId) {
 
     return {
       ERA: stat.era || "N/A",
-      HR9: stat.homeRunsPer9 || "N/A"
+      HR9: stat.homeRunsPer9 || "N/A",
+      wins: stat.wins || 0,
+      losses: stat.losses || 0,
+      strikeouts: stat.strikeOuts || 0,
+      whip: stat.whip || "N/A"
     };
   } catch (err) {
     console.error(`❌ Error fetching stats for pitcher ${pitcherId}:`, err.message);
-    return { ERA: "Error", HR9: "Error" };
+    return { ERA: "Error", HR9: "Error", wins: 0, losses: 0, strikeouts: 0, whip: "Error" };
   }
 }
 
@@ -50,8 +63,13 @@ async function getStartingPitchersForGame(gamePk) {
     const data = await res.json();
     const result = [];
 
+    // Get team info
+    const homeTeam = data.gameData?.teams?.home?.name || "Unknown Team";
+    const awayTeam = data.gameData?.teams?.away?.name || "Unknown Team";
+
     for (const side of ["home", "away"]) {
       const players = data.liveData?.boxscore?.teams?.[side]?.players || {};
+      const teamName = side === "home" ? homeTeam : awayTeam;
 
       for (const key in players) {
         const player = players[key];
@@ -65,7 +83,8 @@ async function getStartingPitchersForGame(gamePk) {
 
           result.push({
             gamePk,
-            team: side,
+            team: teamName,
+            teamSide: side,
             playerId: player.person.id,
             name: player.person.fullName,
             ...stats,
@@ -82,32 +101,85 @@ async function getStartingPitchersForGame(gamePk) {
   }
 }
 
-// Main function
-async function extractStartingPitchersWithStats() {
-  console.log("⚾ Getting today's starting pitchers with stats...");
-  const gamePks = await extractGamePks();
+// Update database with pitcher data
+async function updateDatabaseWithPitchers(pitchers) {
+  const today = getEasternDate();
 
-  const allPitchers = [];
-
-  for (const gamePk of gamePks) {
-    const starters = await getStartingPitchersForGame(gamePk);
-    allPitchers.push(...starters);
+  if (pitchers.length === 0) {
+    console.log("❌ No pitchers to insert");
+    return;
   }
 
-  console.log(`✅ Found ${allPitchers.length} starting pitchers`);
-  return allPitchers;
+  const client = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
+
+  try {
+    await client.connect();
+    const db = client.db(dbName);
+    const collection = db.collection("pitchers");
+
+    // Clear today's data
+    await collection.deleteMany({ date: today });
+
+    // Insert new pitcher data
+    await collection.insertMany(pitchers);
+    console.log(`✅ Inserted ${pitchers.length} starting pitchers`);
+
+  } catch (err) {
+    console.error("❌ DB update error:", err.message);
+  } finally {
+    await client.close();
+  }
 }
 
-// Run standalone
-if (require.main === module) {
-  extractStartingPitchersWithStats()
-    .then((pitchers) => {
-      console.log("\n📊 Starting Pitchers:");
-      pitchers.forEach((p) => {
-        console.log(`${p.name} (${p.team}) | ERA: ${p.ERA}, HR/9: ${p.HR9}`);
-      });
-    })
-    .catch(console.error);
+// Main function to get pitchers and store in database
+async function updateStartingPitchers() {
+  console.log("⚾ Getting today's starting pitchers with stats...");
+  
+  try {
+    const gamePks = await extractGamePks();
+    const allPitchers = [];
+
+    for (const gamePk of gamePks) {
+      const starters = await getStartingPitchersForGame(gamePk);
+      allPitchers.push(...starters);
+    }
+
+    console.log(`✅ Found ${allPitchers.length} starting pitchers`);
+    
+    // Store in database
+    await updateDatabaseWithPitchers(allPitchers);
+    
+    return allPitchers;
+  } catch (err) {
+    console.error("🚨 Error updating starting pitchers:", err.message);
+    return [];
+  }
 }
 
-module.exports.default = extractStartingPitchersWithStats;
+// Function to get pitchers from database (for API endpoint)
+async function getTodaysStartingPitchers() {
+  const today = getEasternDate();
+  const client = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
+
+  try {
+    await client.connect();
+    const db = client.db(dbName);
+    const collection = db.collection("pitchers");
+
+    const pitchers = await collection.find({ date: today }).toArray();
+    return pitchers;
+
+  } catch (err) {
+    console.error("❌ Error fetching pitchers from DB:", err.message);
+    return [];
+  } finally {
+    await client.close();
+  }
+}
+
+// Export both functions
+module.exports = { 
+  updateStartingPitchers, 
+  getTodaysStartingPitchers,
+  default: getTodaysStartingPitchers  // Keep compatibility with existing import
+};
