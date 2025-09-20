@@ -7,7 +7,7 @@ const { DateTime } = require("luxon");
 
 // Import update functions
 const { runUpdate } = require("./updateHomeruns");
-const { updateStatLeaders } = require("./updateStatLeaders");
+const { updateStatLeaders } = require("./extractStatLeaders");
 const { updateStartingPitchers, getTodaysStartingPitchers } = require("./updatePitchers");
 
 const app = express();
