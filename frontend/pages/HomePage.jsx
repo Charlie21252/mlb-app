@@ -8,22 +8,14 @@ function getLocalDate() {
   return `${year}-${month}-${day}`;
 }
 
-function getYesterdayDate() {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const year = yesterday.getFullYear();
-  const month = String(yesterday.getMonth() + 1).padStart(2, "0");
-  const day = String(yesterday.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 export default function HomePage() {
   const [homeruns, setHomeruns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedDate, setSelectedDate] = useState(getLocalDate());
-  const [isToday, setIsToday] = useState(true);
   const [debugInfo, setDebugInfo] = useState("");
+
+  // Always use today's date
+  const selectedDate = getLocalDate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,7 +59,7 @@ export default function HomePage() {
         console.log(`📈 Received data:`, data);
         
         setHomeruns(data);
-        setDebugInfo(`Found ${data.length} home runs for ${selectedDate}`);
+        setDebugInfo(`Found ${data.length} home runs for today`);
         
       } catch (err) {
         const errorMsg = `Failed to load data: ${err.message}`;
@@ -80,27 +72,9 @@ export default function HomePage() {
     };
 
     fetchData();
-  }, [selectedDate]);
+  }, []); // Removed selectedDate dependency since it's always today
 
-  const handleDateChange = (e) => {
-    const newDate = e.target.value;
-    setSelectedDate(newDate);
-    setIsToday(newDate === getLocalDate());
-  };
-
-  const toggleToToday = () => {
-    const today = getLocalDate();
-    setSelectedDate(today);
-    setIsToday(true);
-  };
-
-  const toggleToYesterday = () => {
-    const yesterday = getYesterdayDate();
-    setSelectedDate(yesterday);
-    setIsToday(false);
-  };
-
-  // Manual refresh button for testing
+  // Manual refresh button
   const handleManualRefresh = async () => {
     setLoading(true);
     setError("");
@@ -129,85 +103,82 @@ export default function HomePage() {
         }, 2000);
       } else {
         console.error('❌ Manual update failed:', updateResponse.status);
+        setError('Failed to update data from server');
       }
     } catch (err) {
       console.error('🚨 Manual update error:', err);
+      setError('Failed to connect to server for update');
     }
   };
 
   return (
     <div className="App" style={{ fontFamily: "sans-serif", paddingBottom: "50px" }}>
       <h1 style={{ textAlign: "center", color: "#2c3e50" }}>
-        ⚾ MLB Homeruns for{" "}
-        {isToday
-          ? "Today"
-          : selectedDate === getYesterdayDate()
-          ? "Yesterday"
-          : selectedDate}
+        ⚾ MLB Home Runs for Today
       </h1>
 
-      {/* Date Controls */}
+      {/* Debug Info (only show in development)
+      {debugInfo && window.location.hostname === "localhost" && (
+        <p style={{ 
+          textAlign: "center", 
+          fontSize: "0.9rem", 
+          color: "#666", 
+          backgroundColor: "#f0f0f0",
+          padding: "8px",
+          borderRadius: "4px",
+          margin: "10px auto",
+          maxWidth: "600px"
+        }}>
+          🔍 Debug: {debugInfo}
+        </p>
+      )} */}
+
+      {/* Update Section */}
       <div
         style={{
           display: "flex",
-          justifyContent: "center",
-          flexWrap: "wrap",
-          gap: "1rem",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "0.5rem",
           marginBottom: "1.5rem",
         }}
       >
-        {/* Date Picker */}
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={handleDateChange}
-          style={{
-            padding: "8px",
-            fontSize: "1rem",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-          }}
-        />
-
-        {/* Show Today Button */}
+        {/* Update Button */}
         <button
-          onClick={toggleToToday}
-          disabled={isToday}
+          onClick={handleManualRefresh}
+          disabled={loading}
           style={{
-            padding: "10px 16px",
-            backgroundColor: isToday ? "#ccc" : "#007BFF",
+            padding: "12px 20px",
+            backgroundColor: loading ? "#ccc" : "#dc3545",
             color: "white",
             border: "none",
             borderRadius: "6px",
-            cursor: "pointer",
+            cursor: loading ? "not-allowed" : "pointer",
             fontSize: "1rem",
+            fontWeight: "bold",
+            opacity: loading ? 0.6 : 1,
           }}
         >
-          Show Today
+          {loading ? "Updating..." : "Update Now"}
         </button>
-
-        {/* Show Yesterday Button */}
-        <button
-          onClick={toggleToYesterday}
-          disabled={!isToday && selectedDate === getYesterdayDate()}
-          style={{
-            padding: "10px 16px",
-            backgroundColor:
-              !isToday && selectedDate === getYesterdayDate() ? "#ccc" : "#28a745",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-            fontSize: "1rem",
-          }}
-        >
-          Show Yesterday
-        </button>
+        
+        {/* Auto-update message */}
+        <p style={{ 
+          fontSize: "0.85rem", 
+          color: "#666", 
+          textAlign: "center",
+          margin: "0",
+          fontStyle: "italic"
+        }}>
+          Data automatically updates every 30 minutes
+        </p>
       </div>
 
       {/* Loading */}
       {loading && (
-        <p style={{ textAlign: "center", fontSize: "1.2rem" }}>Loading data...</p>
+        <p style={{ textAlign: "center", fontSize: "1.2rem", color: "#666" }}>
+          Loading today's home runs...
+        </p>
       )}
 
       {/* Error */}
@@ -226,20 +197,28 @@ export default function HomePage() {
           <strong>Error:</strong> {error}
           <br />
           <small style={{ color: "#666" }}>
-            Check the browser console (F12) for more details
+            Try the "Update Now" button or check back later
           </small>
         </div>
       )}
 
       {/* No Data */}
       {!loading && !error && homeruns.length === 0 && (
-        <p style={{ textAlign: "center", fontStyle: "italic", color: "#777" }}>
-          No homeruns recorded for {selectedDate} yet...
-          <br />
+        <div style={{ 
+          textAlign: "center", 
+          padding: "30px",
+          backgroundColor: "#f8f9fa",
+          borderRadius: "8px",
+          margin: "20px auto",
+          maxWidth: "600px"
+        }}>
+          <p style={{ fontStyle: "italic", color: "#777", fontSize: "1.1rem", margin: "0 0 10px 0" }}>
+            No home runs recorded for today yet...
+          </p>
           <small style={{ color: "#999" }}>
-            Try the "Force Update" button to refresh data from MLB API
+            Games may not have started or no home runs have been hit yet today
           </small>
-        </p>
+        </div>
       )}
 
       {/* Results */}
@@ -254,13 +233,13 @@ export default function HomePage() {
             padding: "0 20px",
           }}
         >
-          <p style={{ textAlign: "center", color: "#555" }}>
-            <strong>{homeruns.length}</strong> player(s) hit a homerun on {selectedDate}
+          <p style={{ textAlign: "center", color: "#555", fontSize: "1.1rem" }}>
+            <strong>{homeruns.length}</strong> player{homeruns.length !== 1 ? 's' : ''} hit a home run today
           </p>
 
           {homeruns.map((player, index) => (
             <div
-              key={index}
+              key={player.playerId || index}
               style={{
                 backgroundColor: "#fff",
                 border: "1px solid #ccc",
@@ -276,7 +255,7 @@ export default function HomePage() {
               <div
                 style={{
                   width: "100px",
-                  height: "185px",
+                  height: "130px",
                   overflow: "hidden",
                   flexShrink: 0,
                   border: "2px solid #ddd",
@@ -288,6 +267,7 @@ export default function HomePage() {
                   color: "#aaa",
                   fontWeight: "bold",
                   position: "relative",
+                  borderRadius: "8px",
                 }}
               >
                 <img
@@ -342,20 +322,20 @@ export default function HomePage() {
               </div>
 
               {/* Player Info */}
-              <div>
-                <h2 style={{ margin: "0", fontSize: "1.4rem", color: "#333" }}>
+              <div style={{ flex: 1 }}>
+                <h2 style={{ margin: "0 0 8px 0", fontSize: "1.4rem", color: "#333" }}>
                   {player.name || "Unknown Player"}
                 </h2>
                 <p style={{ margin: "4px 0", color: "#666", fontStyle: "italic" }}>
                   {player.description || "Hit a home run"}
                 </p>
                 <p style={{ margin: "4px 0", color: "#333" }}>
-                  Exit Velo:{" "}
-                  {player.launchSpeed ? `${player.launchSpeed} mph` : "Launch speed N/A"}
+                  <strong>Exit Velocity:</strong>{" "}
+                  {player.launchSpeed ? `${player.launchSpeed} mph` : "N/A"}
                 </p>
                 <p style={{ margin: "4px 0", color: "#555" }}>
-                  Total Distance:{" "}
-                  {player.totalDistance ? `${player.totalDistance} ft` : "Distance N/A"}
+                  <strong>Distance:</strong>{" "}
+                  {player.totalDistance ? `${player.totalDistance} ft` : "N/A"}
                 </p>
               </div>
             </div>
@@ -369,8 +349,7 @@ export default function HomePage() {
               marginTop: "30px",
             }}
           >
-            Data sourced from MLB API • Last updated:{" "}
-            {new Date().toLocaleTimeString()}
+            Data sourced from MLB API • Last updated: {new Date().toLocaleTimeString()}
           </p>
         </div>
       )}

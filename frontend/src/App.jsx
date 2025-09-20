@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import TaskBar from "../components/TaskBar";
 import HomePage from "../pages/HomePage";
 import Leaderboard from "../pages/Leaderboard";
-import PredictionsPage from "../pages/PredictionsPage";
+import StartingPitchers from "../pages/StartingPitchers";
 
 export default function App() {
   return (
@@ -13,7 +13,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/Leaderboard" element={<Leaderboard />} />
-          <Route path="/pitchers" element={<PredictionsPage />} />
+          <Route path="/pitchers" element={<StartingPitchers />} />
         </Routes>
       </>
     </Router>

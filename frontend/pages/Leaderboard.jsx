@@ -173,21 +173,6 @@ export default function Leaderboard() {
         🏆 Top 10 Home Run Hitters – 2025 Season
       </h2>
 
-      {/* Debug Info */}
-      {debugInfo && (
-        <p style={{ 
-          fontSize: "0.9rem", 
-          color: "#666", 
-          backgroundColor: "#f0f0f0",
-          padding: "8px",
-          borderRadius: "4px",
-          margin: "10px auto 20px auto",
-          maxWidth: "600px"
-        }}>
-          🔍 Debug: {debugInfo}
-        </p>
-      )}
-
       {/* Control Buttons */}
       <div style={{ marginBottom: "20px" }}>
         <button

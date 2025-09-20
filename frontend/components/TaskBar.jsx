@@ -29,7 +29,7 @@ export default function TaskBar() {
     <nav style={styles.taskbar}>
       <Link to="/" style={styles.link}>Home</Link>
       <Link to="/Leaderboard" style={styles.link}>Leaderboard</Link>
-      <Link to="/pitchers" style={styles.link}>Predict Homers</Link>
+      <Link to="/pitchers" style={styles.link}>Starting Pitchers</Link>
     </nav>
   );
 }

@@ -100,7 +100,7 @@ export default function StartingPitchers() {
 
   return (
     <div style={{ fontFamily: '"Roboto", sans-serif', padding: "20px", textAlign: "center" }}>
-      <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px" }}>🎯 Starting Pitchers Today</h2>
+      <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px" }}>Starting Pitchers Today</h2>
       {loading && <p>Loading...</p>}
       {error && <p style={{ color: "red" }}>{error}</p>}
 
