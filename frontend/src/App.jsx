@@ -4,6 +4,7 @@ import TaskBar from "../components/TaskBar";
 import HomePage from "../pages/HomePage";
 import Leaderboard from "../pages/Leaderboard";
 import StartingPitchers from "../pages/StartingPitchers";
+import Analytics from "../pages/Analytics";
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/Leaderboard" element={<Leaderboard />} />
           <Route path="/pitchers" element={<StartingPitchers />} />
+          <Route path="/analytics" element={<Analytics />} />
         </Routes>
       </>
     </Router>
