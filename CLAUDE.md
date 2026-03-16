@@ -45,6 +45,7 @@ The backend runs all updates on a 30-minute cron schedule and exposes `POST /upd
 - `/` → `HomePage.jsx` — Today's home runs
 - `/leaderboard` → `Leaderboard.jsx` — Season leaderboard
 - `/pitchers` → `StartingPitchers.jsx` — Today's game matchups
+- `/analytics` → `Analytics.jsx` — HR probability, player Statcast metrics, betting lines (mock data for now)
 
 **API URL switching:** `frontend/.env` sets `VITE_API_URL=https://mlb-backend.onrender.com` for production. Pages detect `localhost` in the URL to switch to `http://localhost:8080` in development.
 
@@ -75,4 +76,17 @@ VITE_API_URL=https://mlb-backend.onrender.com
 ## Deployment
 
 - **Backend:** Render.com
-- **Frontend:** Vercel
+- **Frontend:** Vercel (`charlies-mlb-app.vercel.app`)
+
+### Vercel configuration note
+The frontend lives in the `frontend/` subdirectory, not the repo root. Vercel's `rootDirectory` is **not** a valid `vercel.json` property — it must be set in the Vercel dashboard under **Settings → General → Root Directory → `frontend`**.
+
+The repo-level `vercel.json` works around this by explicitly pointing the build at the subdirectory:
+```json
+{
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "cd frontend && npm install"
+}
+```
+The GitHub repo is connected to the `charlies-mlb-app` Vercel project. If deployments start going to a different project (e.g. `mlb-app-xi`), check that the repo is linked to the correct project in the Vercel dashboard.
