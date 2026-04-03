@@ -33,6 +33,7 @@ There are no automated tests.
 2. `updateHomeruns.js` — Uses game IDs to fetch HR play-by-play data
 3. `updatePitchers.js` — Uses game IDs to fetch starting pitcher assignments
 4. `extractStatLeaders.js` — Fetches season HR leaderboard independently
+5. `extractAllPlayerIds.js` — Utility to extract player IDs (not part of the scheduled pipeline)
 
 The backend runs all updates on a 30-minute cron schedule and exposes `POST /update-data` for manual triggers.
 
@@ -41,11 +42,19 @@ The backend runs all updates on a 30-minute cron schedule and exposes `POST /upd
 - `"pitchers"` — Starting pitchers per game (ERA, HR9, wins, losses, whip)
 - `"leaderboard"` — Top 10 season HR leaders (HR, RBI, AVG, OPS, SB, abPerHr)
 
+**Frontend directory layout** (non-standard — pages and components live outside `src/`):
+```
+frontend/
+  src/         — entry point (main.jsx, App.jsx, index.css)
+  pages/       — page components (HomePage, Leaderboard, StartingPitchers, Analytics)
+  components/  — shared components (TaskBar)
+```
+
 **Frontend routes** (React Router, defined in `src/App.jsx`):
-- `/` → `HomePage.jsx` — Today's home runs
-- `/leaderboard` → `Leaderboard.jsx` — Season leaderboard
-- `/pitchers` → `StartingPitchers.jsx` — Today's game matchups
-- `/analytics` → `Analytics.jsx` — HR probability, player Statcast metrics, betting lines (mock data for now)
+- `/` → `pages/HomePage.jsx` — Today's home runs
+- `/Leaderboard` → `pages/Leaderboard.jsx` — Season leaderboard (note capital L)
+- `/pitchers` → `pages/StartingPitchers.jsx` — Today's game matchups
+- `/analytics` → `pages/Analytics.jsx` — HR probability, player Statcast metrics, betting lines (mock data for now)
 
 **API URL switching:** `frontend/.env` sets `VITE_API_URL=https://mlb-backend.onrender.com` for production. Pages detect `localhost` in the URL to switch to `http://localhost:8080` in development.
 
@@ -58,6 +67,7 @@ The backend runs all updates on a 30-minute cron schedule and exposes `POST /upd
 | GET | `/pitchers` | Today's starting pitchers |
 | POST | `/update-data` | Trigger all data refreshes |
 | GET | `/health` | Health check |
+| GET | `/debug/collections` | List MongoDB collections with document counts |
 
 ## Environment
 

@@ -1,357 +1,259 @@
 import { useState, useEffect } from "react";
 
+const teamColors = {
+  "New York Yankees": "#1C2F61", "Chicago Cubs": "#0E3386",
+  "Los Angeles Dodgers": "#005A9C", "Philadelphia Phillies": "#E81A2D",
+  "Arizona Diamondbacks": "#A71930", "Atlanta Braves": "#CE1141",
+  "Boston Red Sox": "#BD1B2E", "Houston Astros": "#EB6E1F",
+  "San Francisco Giants": "#FD5A1E", "Tampa Bay Rays": "#787EC6",
+  "Toronto Blue Jays": "#134A8A", "Washington Nationals": "#AB0003",
+  "Cleveland Guardians": "#0C234B", "Detroit Tigers": "#FA4616",
+  "Minnesota Twins": "#002B5C", "Oakland Athletics": "#003831",
+  "Seattle Mariners": "#005C5C", "Texas Rangers": "#C0111F",
+  "Colorado Rockies": "#33006F", "Miami Marlins": "#00A3E0",
+  "Milwaukee Brewers": "#0A2351", "Pittsburgh Pirates": "#FDB827",
+  "St. Louis Cardinals": "#BD1E22", "Kansas City Royals": "#004687",
+  "San Diego Padres": "#2F2478", "Baltimore Orioles": "#DF6108",
+  "Los Angeles Angels": "#BA0046", "New York Mets": "#002D72",
+};
+
 function getLocalDate() {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+}
+
+function getApiBase() {
+  const isDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  return isDev ? "http://localhost:8080" : "https://mlb-app-k5mr.onrender.com";
+}
+
+function PlayerPhoto({ playerId, name }) {
+  const [loaded, setLoaded] = useState(false);
+  const [errored, setErrored] = useState(false);
+
+  return (
+    <div style={{
+      width: 90, height: 118, flexShrink: 0, borderRadius: 8,
+      overflow: "hidden", background: "var(--elevated)", position: "relative",
+    }}>
+      {!errored && (
+        <img
+          src={`https://img.mlbstatic.com/mlb-photos/image/upload/q_100/v1/people/${playerId}/headshot/67/current.png`}
+          alt={name}
+          onLoad={() => setLoaded(true)}
+          onError={() => setErrored(true)}
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: loaded ? "block" : "none" }}
+        />
+      )}
+      {(!loaded || errored) && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", alignItems: "center",
+          justifyContent: "center", color: "var(--text-muted)", fontSize: "0.65rem",
+          letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "var(--font-data)",
+        }}>
+          {errored ? "N/A" : "..."}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatBlock({ value, label }) {
+  return (
+    <div style={{ textAlign: "center" }}>
+      <div style={{
+        fontFamily: "var(--font-display)", fontSize: "1.5rem", color: "var(--gold)",
+        lineHeight: 1, letterSpacing: "0.01em",
+      }}>
+        {value ?? "—"}
+      </div>
+      <div style={{
+        fontFamily: "var(--font-data)", fontSize: "0.68rem", fontWeight: 600,
+        letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)",
+        marginTop: 4,
+      }}>
+        {label}
+      </div>
+    </div>
+  );
 }
 
 export default function HomePage() {
   const [homeruns, setHomeruns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [debugInfo, setDebugInfo] = useState("");
-
-  // Always use today's date
   const selectedDate = getLocalDate();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError("");
-      setDebugInfo("");
-
-      try {
-        // Better API URL detection
-        const isDevelopment = 
-          window.location.hostname === "localhost" || 
-          window.location.hostname === "127.0.0.1" ||
-          process.env.NODE_ENV === "development";
-
-        const API_BASE_URL = isDevelopment 
-          ? "http://localhost:8080" 
-          : "https://mlb-app-k5mr.onrender.com";
-
-        setDebugInfo(`Using API: ${API_BASE_URL}`);
-        console.log(`🔗 Calling API: ${API_BASE_URL}/daily_homeruns?date=${selectedDate}`);
-
-        const response = await fetch(
-          `${API_BASE_URL}/daily_homeruns?date=${selectedDate}`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        console.log(`📊 Response status: ${response.status}`);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`❌ API Error: ${response.status} - ${errorText}`);
-          throw new Error(`API returned ${response.status}: ${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log(`📈 Received data:`, data);
-        
-        setHomeruns(data);
-        setDebugInfo(`Found ${data.length} home runs for today`);
-        
-      } catch (err) {
-        const errorMsg = `Failed to load data: ${err.message}`;
-        setError(errorMsg);
-        setDebugInfo(`Error: ${err.message}`);
-        console.error('🚨 Fetch error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []); // Removed selectedDate dependency since it's always today
-
-  // Manual refresh button
-  const handleManualRefresh = async () => {
+  const fetchData = async () => {
     setLoading(true);
     setError("");
-    
     try {
-      const isDevelopment = 
-        window.location.hostname === "localhost" || 
-        window.location.hostname === "127.0.0.1";
-
-      const API_BASE_URL = isDevelopment 
-        ? "http://localhost:8080" 
-        : "https://mlb-app-k5mr.onrender.com";
-
-      // Trigger manual update
-      console.log('🔄 Triggering manual update...');
-      const updateResponse = await fetch(`${API_BASE_URL}/update-data`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (updateResponse.ok) {
-        console.log('✅ Manual update successful');
-        // Wait a bit then refetch data
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      } else {
-        console.error('❌ Manual update failed:', updateResponse.status);
-        setError('Failed to update data from server');
-      }
+      const res = await fetch(`${getApiBase()}/daily_homeruns?date=${selectedDate}`);
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const data = await res.json();
+      setHomeruns(data);
     } catch (err) {
-      console.error('🚨 Manual update error:', err);
-      setError('Failed to connect to server for update');
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const handleUpdate = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${getApiBase()}/update-data`, { method: "POST" });
+      if (res.ok) setTimeout(() => window.location.reload(), 2000);
+      else throw new Error(`Server error ${res.status}`);
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="App" style={{ fontFamily: "sans-serif", paddingBottom: "50px" }}>
-      <h1 style={{ textAlign: "center", color: "#2c3e50" }}>
-        ⚾ MLB Home Runs for Today
-      </h1>
-
-      {/* Debug Info (only show in development)
-      {debugInfo && window.location.hostname === "localhost" && (
-        <p style={{ 
-          textAlign: "center", 
-          fontSize: "0.9rem", 
-          color: "#666", 
-          backgroundColor: "#f0f0f0",
-          padding: "8px",
-          borderRadius: "4px",
-          margin: "10px auto",
-          maxWidth: "600px"
-        }}>
-          🔍 Debug: {debugInfo}
+    <div className="page">
+      <div className="page-header">
+        <p className="page-eyebrow">
+          {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>
-      )} */}
+        <h1 className="page-title">
+          Today's <span className="accent">Bombs</span>
+        </h1>
 
-      {/* Update Section */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "0.5rem",
-          marginBottom: "1.5rem",
-        }}
-      >
-        {/* Update Button */}
-        <button
-          onClick={handleManualRefresh}
-          disabled={loading}
-          style={{
-            padding: "12px 20px",
-            backgroundColor: loading ? "#ccc" : "#dc3545",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            cursor: loading ? "not-allowed" : "pointer",
-            fontSize: "1rem",
-            fontWeight: "bold",
-            opacity: loading ? 0.6 : 1,
-          }}
-        >
-          {loading ? "Updating..." : "Update Now"}
-        </button>
-        
-        {/* Auto-update message */}
-        <p style={{ 
-          fontSize: "0.85rem", 
-          color: "#666", 
-          textAlign: "center",
-          margin: "0",
-          fontStyle: "italic"
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+          {!loading && !error && (
+            <span className="stat-pill">
+              {homeruns.length} HR{homeruns.length !== 1 ? "s" : ""} today
+            </span>
+          )}
+          <button
+            className="btn btn-red"
+            onClick={handleUpdate}
+            disabled={loading}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M13.65 2.35A8 8 0 1 0 15 8h-2a6 6 0 1 1-1.05-3.37L10 6h5V1l-1.35 1.35z" fill="currentColor"/>
+            </svg>
+            {loading ? "Updating…" : "Update Now"}
+          </button>
+        </div>
+
+        <p style={{
+          fontFamily: "var(--font-data)", fontSize: "0.72rem", color: "var(--text-muted)",
+          letterSpacing: "0.08em", textTransform: "uppercase", marginTop: 10, marginBottom: 0,
         }}>
-          Data automatically updates every 30 minutes
+          Auto-refreshes every 30 min
         </p>
       </div>
 
-      {/* Loading */}
-      {loading && (
-        <p style={{ textAlign: "center", fontSize: "1.2rem", color: "#666" }}>
-          Loading today's home runs...
-        </p>
-      )}
+      {loading && <p className="loading-text">Loading today's home runs…</p>}
 
-      {/* Error */}
       {error && (
-        <div style={{ 
-          color: "red", 
-          textAlign: "center", 
-          fontSize: "1.1rem",
-          backgroundColor: "#ffe6e6",
-          padding: "15px",
-          borderRadius: "8px",
-          margin: "20px auto",
-          maxWidth: "600px",
-          border: "1px solid #ffcccc"
-        }}>
-          <strong>Error:</strong> {error}
-          <br />
-          <small style={{ color: "#666" }}>
-            Try the "Update Now" button or check back later
-          </small>
+        <div className="state-box error">
+          <p className="state-title">Could not load data</p>
+          <p className="state-desc">{error}<br />Backend may be offline. Try "Update Now" or check back soon.</p>
         </div>
       )}
 
-      {/* No Data */}
       {!loading && !error && homeruns.length === 0 && (
-        <div style={{ 
-          textAlign: "center", 
-          padding: "30px",
-          backgroundColor: "#f8f9fa",
-          borderRadius: "8px",
-          margin: "20px auto",
-          maxWidth: "600px"
-        }}>
-          <p style={{ fontStyle: "italic", color: "#777", fontSize: "1.1rem", margin: "0 0 10px 0" }}>
-            No home runs recorded for today yet...
-          </p>
-          <small style={{ color: "#999" }}>
-            Games may not have started or no home runs have been hit yet today
-          </small>
+        <div className="state-box">
+          <p className="state-title">No home runs yet today</p>
+          <p className="state-desc">Games may not have started, or no home runs have been hit yet. Check back soon.</p>
         </div>
       )}
 
-      {/* Results */}
       {!loading && !error && homeruns.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "20px",
-            maxWidth: "600px",
-            margin: "0 auto",
-            padding: "0 20px",
-          }}
-        >
-          <p style={{ textAlign: "center", color: "#555", fontSize: "1.1rem" }}>
-            <strong>{homeruns.length}</strong> player{homeruns.length !== 1 ? 's' : ''} hit a home run today
-          </p>
-
-          {homeruns.map((player, index) => (
-            <div
-              key={player.playerId || index}
-              style={{
-                backgroundColor: "#fff",
-                border: "1px solid #ccc",
-                borderRadius: "12px",
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
-                padding: "20px",
-                display: "flex",
-                alignItems: "center",
-                gap: "20px",
-              }}
-            >
-              {/* Player Image */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {homeruns.map((player, index) => {
+            const accentColor = teamColors[player.team] || "var(--gold)";
+            return (
               <div
-                style={{
-                  width: "100px",
-                  height: "130px",
-                  overflow: "hidden",
-                  flexShrink: 0,
-                  border: "2px solid #ddd",
-                  backgroundColor: "#f9f9f9",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  fontSize: "12px",
-                  color: "#aaa",
-                  fontWeight: "bold",
-                  position: "relative",
-                  borderRadius: "8px",
-                }}
+                key={player.playerId || index}
+                className="card"
+                style={{ borderLeft: `3px solid ${accentColor}` }}
               >
-                <img
-                  src={`https://img.mlbstatic.com/mlb-photos/image/upload/q_100/v1/people/${player.playerId}/headshot/67/current.png`}
-                  alt={player.name}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "none",
-                  }}
-                  onLoad={(e) => {
-                    e.target.style.display = "block";
-                    e.target.nextSibling?.remove();
-                  }}
-                  onError={(e) => {
-                    e.target.style.display = "none";
-                    let placeholder = e.target.nextSibling;
-                    if (!placeholder || placeholder.tagName !== "DIV") {
-                      placeholder = document.createElement("div");
-                      placeholder.innerText = "No Image";
-                      Object.assign(placeholder.style, {
-                        width: "100%",
-                        height: "100%",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        fontSize: "12px",
-                        color: "#999",
-                        textAlign: "center",
-                        fontFamily: "sans-serif",
-                      });
-                      e.target.parentNode.appendChild(placeholder);
-                    }
-                  }}
-                />
-                <div
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    fontSize: "12px",
-                    color: "#bbb",
-                    textAlign: "center",
-                    fontFamily: "sans-serif",
-                  }}
-                >
-                  Loading...
+                <div style={{
+                  display: "flex", alignItems: "stretch", gap: 0,
+                }}>
+                  {/* Rank */}
+                  <div style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: 48, flexShrink: 0, borderRight: "1px solid var(--border-subtle)",
+                  }}>
+                    <span style={{
+                      fontFamily: "var(--font-display)", fontSize: "1rem",
+                      color: "var(--text-muted)", letterSpacing: "0.02em",
+                    }}>
+                      {index + 1}
+                    </span>
+                  </div>
+
+                  {/* Photo */}
+                  <div style={{ padding: "16px 16px 16px 16px", display: "flex", alignItems: "center" }}>
+                    <PlayerPhoto playerId={player.playerId} name={player.name} />
+                  </div>
+
+                  {/* Info */}
+                  <div style={{ flex: 1, padding: "16px 16px 16px 4px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6, minWidth: 0 }}>
+                    <div>
+                      <h2 style={{
+                        fontFamily: "var(--font-display)", fontSize: "1.15rem", color: "var(--text)",
+                        margin: 0, letterSpacing: "0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                      }}>
+                        {player.name || "Unknown Player"}
+                      </h2>
+                      {player.team && (
+                        <p style={{
+                          fontFamily: "var(--font-data)", fontSize: "0.75rem", fontWeight: 600,
+                          letterSpacing: "0.08em", color: "var(--text-secondary)", margin: "2px 0 0 0",
+                          textTransform: "uppercase",
+                        }}>
+                          {player.team}
+                        </p>
+                      )}
+                    </div>
+
+                    {player.description && (
+                      <p style={{
+                        fontFamily: "var(--font-data)", fontSize: "0.82rem", color: "var(--text-secondary)",
+                        margin: 0, lineHeight: 1.5, fontStyle: "italic",
+                        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                      }}>
+                        {player.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Stats */}
+                  <div style={{
+                    display: "flex", flexDirection: "column", justifyContent: "center", gap: 16,
+                    padding: "16px 24px", borderLeft: "1px solid var(--border-subtle)",
+                    flexShrink: 0,
+                  }}>
+                    <StatBlock
+                      value={player.launchSpeed ? `${player.launchSpeed}` : null}
+                      label="mph exit velo"
+                    />
+                    <StatBlock
+                      value={player.totalDistance ? `${player.totalDistance}` : null}
+                      label="ft distance"
+                    />
+                  </div>
                 </div>
               </div>
-
-              {/* Player Info */}
-              <div style={{ flex: 1 }}>
-                <h2 style={{ margin: "0 0 8px 0", fontSize: "1.4rem", color: "#333" }}>
-                  {player.name || "Unknown Player"}
-                </h2>
-                <p style={{ margin: "4px 0", color: "#666", fontStyle: "italic" }}>
-                  {player.description || "Hit a home run"}
-                </p>
-                <p style={{ margin: "4px 0", color: "#333" }}>
-                  <strong>Exit Velocity:</strong>{" "}
-                  {player.launchSpeed ? `${player.launchSpeed} mph` : "N/A"}
-                </p>
-                <p style={{ margin: "4px 0", color: "#555" }}>
-                  <strong>Distance:</strong>{" "}
-                  {player.totalDistance ? `${player.totalDistance} ft` : "N/A"}
-                </p>
-              </div>
-            </div>
-          ))}
-
-          <p
-            style={{
-              textAlign: "center",
-              fontSize: "0.9rem",
-              color: "#aaa",
-              marginTop: "30px",
-            }}
-          >
-            Data sourced from MLB API • Last updated: {new Date().toLocaleTimeString()}
-          </p>
+            );
+          })}
         </div>
+      )}
+
+      {!loading && (
+        <p className="data-note">
+          MLB StatsAPI · {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </p>
       )}
     </div>
   );

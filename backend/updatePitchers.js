@@ -18,7 +18,8 @@ const getEasternDate = () =>
 
 // Get season pitching stats for a player
 async function getPitchingStats(pitcherId) {
-  const url = `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=season&group=pitching&season=2025`;
+  const currentYear = new Date().getFullYear();
+  const url = `https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=season&group=pitching&season=${currentYear}`;
 
   try {
     const res = await fetch(url, {
@@ -68,6 +69,12 @@ async function getStartingPitchersForGame(gamePk) {
     const homeTeam = data.gameData?.teams?.home?.name || "Unknown Team";
     const awayTeam = data.gameData?.teams?.away?.name || "Unknown Team";
 
+    // Use probablePitchers — available before first pitch, unlike boxscore gamesStarted
+    const probablePitchers = data.gameData?.probablePitchers || {};
+    const probableIds = new Set(
+      Object.values(probablePitchers).map(p => p.id).filter(Boolean)
+    );
+
     for (const side of ["home", "away"]) {
       const players = data.liveData?.boxscore?.teams?.[side]?.players || {};
       const teamName = side === "home" ? homeTeam : awayTeam;
@@ -77,7 +84,7 @@ async function getStartingPitchersForGame(gamePk) {
 
         const isStarter =
           player.position?.code === "1" &&
-          player.stats?.pitching?.gamesStarted > 0;
+          probableIds.has(player.person.id);
 
         if (isStarter) {
           const stats = await getPitchingStats(player.person.id);
