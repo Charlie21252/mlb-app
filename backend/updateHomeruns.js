@@ -1,6 +1,7 @@
 // updateHomeruns.js
 const { fetch } = require("undici");
 const { MongoClient } = require("mongodb");
+const { DateTime } = require("luxon");
 
 // MongoDB connection
 require('dotenv').config();
@@ -13,19 +14,22 @@ let db;
 // Import extractGamePks function
 const extractGamePks = require("./extractGamePks").default;
 
+// Use Eastern Time to match the /daily_homeruns query in main.js
 function getTodayDate() {
-  const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  return DateTime.now().setZone("America/New_York").toISODate();
 }
 
 async function getGameFeed(gameId) {
-  const url = `https://statsapi.mlb.com/api/v1.1/game/${gameId}/feed/live`; 
+  const url = `https://statsapi.mlb.com/api/v1.1/game/${gameId}/feed/live`;
 
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Bad response for game ${gameId}`);
     const data = await response.json();
-    return data?.liveData?.plays?.allPlays || [];
+    const status = data?.gameData?.status?.detailedState || "Unknown";
+    const allPlays = data?.liveData?.plays?.allPlays || [];
+    console.log(`  Game ${gameId}: ${status} | ${allPlays.length} plays`);
+    return allPlays;
   } catch (err) {
     console.error(`🚨 Error fetching feed for game ${gameId}:`, err.message);
     return [];

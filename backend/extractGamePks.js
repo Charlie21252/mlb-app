@@ -1,13 +1,9 @@
 const fetch = require("undici").fetch;
-const fs = require("fs");
+const { DateTime } = require("luxon");
 
 async function extractGamePks() {
-  // Generate today's date in YYYY-MM-DD format
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0"); // Months are zero-based
-  const day = String(today.getDate()).padStart(2, "0");
-  const formattedDate = `${year}-${month}-${day}`;
+  // Use Eastern Time so the schedule date matches the rest of the app
+  const formattedDate = DateTime.now().setZone("America/New_York").toISODate();
 
   // Construct the URL with today's date
   const url = `https://statsapi.mlb.com/api/v1/schedule?date=${formattedDate}&sportId=1`;

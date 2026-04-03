@@ -10,8 +10,9 @@ if (!uri) throw new Error("MONGODB_URI environment variable is missing!");
 const dbName = "mlb_data";
 
 // Leaderboard URL for Home Runs only
+const currentYear = new Date().getFullYear();
 const hrLeaderUrl =
-  "https://statsapi.mlb.com/api/v1/stats/leaders?leaderCategories=homeRuns&season=2025&limit=10&playerPool=ALL";
+  `https://statsapi.mlb.com/api/v1/stats/leaders?leaderCategories=homeRuns&season=${currentYear}&limit=10&playerPool=ALL`;
 
 // Use Luxon to get today's date in Eastern Time
 const getEasternDate = () =>
@@ -48,7 +49,7 @@ async function extractTopHittersWithFullStats() {
 
       console.log(`🔍 Fetching full stats for ${playerName} (${playerId})`);
 
-      const statsUrl = `https://statsapi.mlb.com/api/v1/people/${playerId}/stats?stats=season&group=hitting&season=2025`;
+      const statsUrl = `https://statsapi.mlb.com/api/v1/people/${playerId}/stats?stats=season&group=hitting&season=${currentYear}`;
       const statsRes = await fetch(statsUrl);
 
       if (!statsRes.ok) {
