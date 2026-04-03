@@ -56,7 +56,7 @@ export default function Leaderboard() {
   return (
     <div className="page-wide">
       <div className="page-header">
-        <p className="page-eyebrow">2025 Season</p>
+        <p className="page-eyebrow">2026 Season</p>
         <h1 className="page-title">
           Power <span className="accent">Rankings</span>
         </h1>
