@@ -176,14 +176,9 @@ export default function HomePage() {
                 className="card"
                 style={{ borderLeft: `3px solid ${accentColor}` }}
               >
-                <div style={{
-                  display: "flex", alignItems: "stretch", gap: 0,
-                }}>
+                <div className="hr-card-inner">
                   {/* Rank */}
-                  <div style={{
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    width: 48, flexShrink: 0, borderRight: "1px solid var(--border-subtle)",
-                  }}>
+                  <div className="hr-card-rank">
                     <span style={{
                       fontFamily: "var(--font-display)", fontSize: "1rem",
                       color: "var(--text-muted)", letterSpacing: "0.02em",
@@ -192,48 +187,45 @@ export default function HomePage() {
                     </span>
                   </div>
 
-                  {/* Photo */}
-                  <div style={{ padding: "16px 16px 16px 16px", display: "flex", alignItems: "center" }}>
-                    <PlayerPhoto playerId={player.playerId} name={player.name} />
-                  </div>
+                  {/* Photo + Info */}
+                  <div className="hr-card-body">
+                    <div style={{ padding: "16px", display: "flex", alignItems: "center", flexShrink: 0 }}>
+                      <PlayerPhoto playerId={player.playerId} name={player.name} />
+                    </div>
 
-                  {/* Info */}
-                  <div style={{ flex: 1, padding: "16px 16px 16px 4px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6, minWidth: 0 }}>
-                    <div>
-                      <h2 style={{
-                        fontFamily: "var(--font-display)", fontSize: "1.15rem", color: "var(--text)",
-                        margin: 0, letterSpacing: "0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                      }}>
-                        {player.name || "Unknown Player"}
-                      </h2>
-                      {player.team && (
-                        <p style={{
-                          fontFamily: "var(--font-data)", fontSize: "0.75rem", fontWeight: 600,
-                          letterSpacing: "0.08em", color: "var(--text-secondary)", margin: "2px 0 0 0",
-                          textTransform: "uppercase",
+                    <div className="hr-card-info">
+                      <div>
+                        <h2 style={{
+                          fontFamily: "var(--font-display)", fontSize: "1.15rem", color: "var(--text)",
+                          margin: 0, letterSpacing: "0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                         }}>
-                          {player.team}
+                          {player.name || "Unknown Player"}
+                        </h2>
+                        {player.team && (
+                          <p style={{
+                            fontFamily: "var(--font-data)", fontSize: "0.75rem", fontWeight: 600,
+                            letterSpacing: "0.08em", color: "var(--text-secondary)", margin: "2px 0 0 0",
+                            textTransform: "uppercase",
+                          }}>
+                            {player.team}
+                          </p>
+                        )}
+                      </div>
+
+                      {player.description && (
+                        <p style={{
+                          fontFamily: "var(--font-data)", fontSize: "0.82rem", color: "var(--text-secondary)",
+                          margin: 0, lineHeight: 1.5, fontStyle: "italic",
+                          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                        }}>
+                          {player.description}
                         </p>
                       )}
                     </div>
-
-                    {player.description && (
-                      <p style={{
-                        fontFamily: "var(--font-data)", fontSize: "0.82rem", color: "var(--text-secondary)",
-                        margin: 0, lineHeight: 1.5, fontStyle: "italic",
-                        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-                      }}>
-                        {player.description}
-                      </p>
-                    )}
                   </div>
 
                   {/* Stats */}
-                  <div style={{
-                    display: "flex", flexDirection: "column", justifyContent: "center", gap: 16,
-                    padding: "16px 24px", borderLeft: "1px solid var(--border-subtle)",
-                    flexShrink: 0,
-                  }}>
+                  <div className="hr-card-stats">
                     <StatBlock
                       value={player.launchSpeed ? `${player.launchSpeed}` : null}
                       label="mph exit velo"

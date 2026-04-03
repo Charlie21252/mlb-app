@@ -125,11 +125,7 @@ export default function Analytics() {
       </div>
 
       {/* Tab bar */}
-      <div style={{
-        display: "flex", justifyContent: "center", gap: 4, marginBottom: 32,
-        background: "var(--surface)", border: "1px solid var(--border-subtle)",
-        borderRadius: 10, padding: 4, width: "fit-content", margin: "0 auto 32px",
-      }}>
+      <div className="analytics-tabs">
         {TABS.map((tab, i) => (
           <button
             key={tab.key}
@@ -348,10 +344,8 @@ export default function Analytics() {
                 <div
                   key={i}
                   className="card"
-                  style={{
-                    display: "flex", alignItems: "center", padding: "14px 20px", gap: 16,
-                  }}
                 >
+                  <div className="betting-row" style={{ width: "100%" }}>
                   {/* Game */}
                   <span style={{
                     fontFamily: "var(--font-data)", fontSize: "0.75rem", fontWeight: 700,
@@ -393,6 +387,7 @@ export default function Analytics() {
                   }}>
                     {row.confidence}
                   </span>
+                  </div>
                 </div>
               );
             })}

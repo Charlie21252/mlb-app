@@ -49,11 +49,14 @@ function PitcherSide({ pitcher, align = "left" }) {
   const isRight = align === "right";
 
   return (
-    <div style={{
-      flex: 1, display: "flex", flexDirection: "column",
-      alignItems: isRight ? "flex-end" : "flex-start",
-      padding: "20px",
-    }}>
+    <div
+      className={isRight ? "pitcher-side-right" : undefined}
+      style={{
+        flex: 1, display: "flex", flexDirection: "column",
+        alignItems: isRight ? "flex-end" : "flex-start",
+        padding: "20px",
+      }}
+    >
       {/* Photo + name */}
       <div style={{
         display: "flex", alignItems: "center",
@@ -181,11 +184,7 @@ export default function StartingPitchers() {
       )}
 
       {!loading && !error && games.length > 0 && (
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(480px, 1fr))",
-          gap: 16,
-        }}>
+        <div className="pitchers-grid">
           {games.map((matchup, index) => {
             const [away, home] = matchup.length >= 2 ? [matchup[0], matchup[1]] : [matchup[0], null];
             const awayColor = teamColors[away?.team] || "#484f58";
@@ -212,17 +211,11 @@ export default function StartingPitchers() {
                 </div>
 
                 {/* Pitchers */}
-                <div style={{ display: "flex", alignItems: "stretch" }}>
+                <div className="pitcher-card-body">
                   {away && <PitcherSide pitcher={away} align="left" />}
 
                   {/* VS divider */}
-                  <div style={{
-                    display: "flex", flexDirection: "column", alignItems: "center",
-                    justifyContent: "center", padding: "20px 8px",
-                    borderLeft: "1px solid var(--border-subtle)",
-                    borderRight: "1px solid var(--border-subtle)",
-                    gap: 4,
-                  }}>
+                  <div className="pitcher-vs">
                     <span style={{
                       fontFamily: "var(--font-display)", fontSize: "0.75rem", color: "var(--text-muted)",
                       letterSpacing: "0.1em",

@@ -3,22 +3,28 @@
 }
 
 :root {
-  --bg: #0d1117;
-  --surface: #161b22;
-  --elevated: #1c2128;
-  --border: #30363d;
-  --border-subtle: #21262d;
+  --bg: #060d1a;
+  --surface: #0b1528;
+  --elevated: #102035;
+  --border: #1a3255;
+  --border-subtle: #122442;
 
   --gold: #e8b84b;
   --gold-glow: rgba(232, 184, 75, 0.18);
   --gold-dim: rgba(232, 184, 75, 0.09);
+
+  --blue: #2563eb;
+  --blue-bright: #3b82f6;
+  --blue-dim: rgba(37, 99, 235, 0.12);
+  --blue-glow: rgba(37, 99, 235, 0.3);
+
   --red: #c5373a;
   --red-bright: #e74c3c;
   --red-dim: rgba(197, 55, 58, 0.12);
 
-  --text: #e6edf3;
-  --text-secondary: #8b949e;
-  --text-muted: #484f58;
+  --text: #ddeaff;
+  --text-secondary: #7a9bbf;
+  --text-muted: #3a5678;
 
   --font-display: 'Russo One', sans-serif;
   --font-data: 'Chakra Petch', sans-serif;
@@ -55,7 +61,7 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(37,99,235,0.06) 1px, transparent 1px);
   background-size: 28px 28px;
   z-index: 0;
 }
@@ -66,7 +72,7 @@ body::before {
   position: fixed;
   top: 0; left: 0; right: 0;
   height: var(--nav-height);
-  background: rgba(13, 17, 23, 0.94);
+  background: rgba(6, 13, 26, 0.95);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-subtle);
@@ -113,7 +119,7 @@ body::before {
 
 .nav-link:hover {
   color: var(--text);
-  background: rgba(255,255,255,0.05);
+  background: rgba(37, 99, 235, 0.08);
 }
 
 .nav-link.active {
@@ -131,6 +137,54 @@ body::before {
   background: var(--gold);
   border-radius: 2px;
 }
+
+/* Hamburger — hidden on desktop */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition);
+}
+.nav-hamburger:hover { background: rgba(37,99,235,0.1); }
+.nav-hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--text-secondary);
+  border-radius: 2px;
+  transition: all var(--transition);
+}
+.nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-hamburger.open span:nth-child(2) { opacity: 0; }
+.nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* Mobile nav drawer */
+.nav-mobile-drawer {
+  display: none;
+  position: fixed;
+  top: var(--nav-height);
+  left: 0; right: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  z-index: 999;
+  padding: 8px;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-mobile-drawer.open { display: flex; }
+.nav-mobile-drawer .nav-link {
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  width: 100%;
+}
+.nav-mobile-drawer .nav-link.active::after { display: none; }
 
 /* ── Page Layout ─────────────────────────────────── */
 
@@ -217,16 +271,17 @@ body::before {
   line-height: 1;
 }
 
+/* Primary blue button — used where btn-red was for update/refresh actions */
 .btn-red {
-  background: var(--red);
+  background: var(--blue);
   color: #fff;
-  border-color: var(--red);
+  border-color: var(--blue);
 }
 .btn-red:hover:not(:disabled) {
-  background: var(--red-bright);
-  border-color: var(--red-bright);
+  background: var(--blue-bright);
+  border-color: var(--blue-bright);
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(197,55,58,0.35);
+  box-shadow: 0 4px 16px var(--blue-glow);
 }
 
 .btn-ghost {
@@ -260,7 +315,7 @@ body::before {
 .card:hover {
   border-color: var(--border);
   transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
 }
 
 /* ── State boxes ─────────────────────────────────── */
@@ -338,4 +393,171 @@ body::before {
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #484f58; }
+::-webkit-scrollbar-thumb:hover { background: var(--border); filter: brightness(1.5); }
+
+/* ── HR Card responsive classes ──────────────────── */
+
+.hr-card-inner {
+  display: flex;
+  align-items: stretch;
+}
+
+.hr-card-rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-subtle);
+}
+
+.hr-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.hr-card-info {
+  flex: 1;
+  padding: 16px 16px 16px 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hr-card-stats {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 24px;
+  border-left: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+/* ── Pitcher card responsive classes ─────────────── */
+
+.pitchers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 16px;
+}
+
+.pitcher-card-body {
+  display: flex;
+  align-items: stretch;
+}
+
+.pitcher-vs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 8px;
+  border-left: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+  gap: 4px;
+}
+
+/* ── Analytics tab bar ───────────────────────────── */
+
+.analytics-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 4px;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── Betting row ─────────────────────────────────── */
+
+.betting-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  gap: 16px;
+}
+
+/* ── Mobile ──────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  :root { --nav-height: 56px; }
+
+  .nav { padding: 0 16px; }
+  .nav-links { display: none; }
+  .nav-hamburger { display: flex; }
+
+  .page, .page-wide { padding: 24px 12px 64px; }
+
+  /* HR cards — stack stats below info on mobile */
+  .hr-card-inner { flex-direction: column; }
+
+  .hr-card-rank {
+    width: 100%;
+    height: 36px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .hr-card-body { flex-direction: column; }
+
+  .hr-card-info { padding: 12px 14px; }
+
+  .hr-card-stats {
+    flex-direction: row;
+    border-left: none;
+    border-top: 1px solid var(--border-subtle);
+    padding: 12px 20px;
+    gap: 24px;
+    justify-content: center;
+  }
+
+  /* Pitcher cards — stack vertically */
+  .pitchers-grid { grid-template-columns: 1fr; }
+
+  .pitcher-card-body { flex-direction: column; }
+
+  .pitcher-vs {
+    flex-direction: row;
+    padding: 10px 20px;
+    border-left: none;
+    border-right: none;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    justify-content: center;
+  }
+
+  .pitcher-side-right {
+    align-items: flex-start !important;
+  }
+  .pitcher-side-right > div:first-child {
+    flex-direction: row !important;
+  }
+  .pitcher-side-right > div:first-child > div:last-child {
+    text-align: left !important;
+  }
+  .pitcher-side-right > div:last-child {
+    flex-direction: row !important;
+  }
+
+  /* Analytics tabs — scrollable */
+  .analytics-tabs {
+    width: calc(100vw - 24px);
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  /* Betting rows — wrap */
+  .betting-row { flex-wrap: wrap; gap: 10px; }
+
+  .page-header { margin-bottom: 28px; }
+}
