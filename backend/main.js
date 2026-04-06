@@ -6,7 +6,8 @@ const { MongoClient } = require("mongodb");
 const { DateTime } = require("luxon");
 
 // Import update functions
-const { runUpdate } = require("./updateHomeruns");
+const { runUpdate, getGameHighlights } = require("./updateHomeruns");
+const { fetch } = require("undici");
 const { updateStatLeaders } = require("./extractStatLeaders");
 const { updateStartingPitchers, getTodaysStartingPitchers } = require("./updatePitchers");
 
@@ -72,6 +73,99 @@ app.get("/daily_homeruns", async (req, res) => {
   } catch (err) {
     console.error("🚨 Error fetching daily homeruns:", err.message);
     res.status(500).json({ error: "Error fetching data" });
+  }
+});
+
+// GET /highlights?date=YYYY-MM-DD
+// Returns { [playerId]: videoUrl } for all homers on that date.
+// Looks up gamePks from stored homer records; falls back to MLB schedule API if not stored.
+app.get("/highlights", async (req, res) => {
+  try {
+    let { date } = req.query;
+    if (!date) date = DateTime.now().setZone("America/New_York").toISODate();
+
+    // Get unique gamePks from stored homer records
+    const homers = await db.collection("initial connection").find({ date }).toArray();
+    let gamePks = [...new Set(homers.map(h => h.gamePk).filter(Boolean))];
+
+    // Fallback: fetch gamePks directly from MLB schedule API for this date
+    if (!gamePks.length) {
+      const scheduleRes = await fetch(
+        `https://statsapi.mlb.com/api/v1/schedule?date=${date}&sportId=1`,
+        { headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json" } }
+      );
+      if (scheduleRes.ok) {
+        const scheduleData = await scheduleRes.json();
+        gamePks = (scheduleData.dates?.[0]?.games || []).map(g => g.gamePk);
+      }
+    }
+
+    if (!gamePks.length) return res.json({});
+
+    // Fetch highlights for every game in parallel
+    const maps = await Promise.all(gamePks.map(gid => getGameHighlights(gid)));
+    const result = {};
+    maps.forEach(map => map.forEach((url, pid) => { result[pid] = url; }));
+
+    console.log(`🎬 Highlights for ${date}: ${Object.keys(result).length} players across ${gamePks.length} games`);
+    res.json(result);
+  } catch (err) {
+    console.error("🚨 Error fetching highlights:", err.message);
+    res.status(500).json({ error: "Error fetching highlights" });
+  }
+});
+
+// GET /analytics/odds
+// Derives HR prop odds from each top hitter's AB/HR rate; matches player to today's game.
+app.get("/analytics/odds", async (req, res) => {
+  try {
+    const today = DateTime.now().setZone("America/New_York").toISODate();
+    const players = await db.collection("leaderboard").find({ date: today }).sort({ HR: -1 }).toArray();
+    if (!players.length) return res.json([]);
+
+    // Build a team→{opponent, gamePk} map from the pitchers collection
+    const pitchers = await db.collection("pitchers").find({ date: today }).toArray();
+    const teamGameMap = {};
+    const gamePkTeams = {};
+    pitchers.forEach(p => {
+      if (!gamePkTeams[p.gamePk]) gamePkTeams[p.gamePk] = [];
+      gamePkTeams[p.gamePk].push(p.team);
+    });
+    Object.entries(gamePkTeams).forEach(([gk, teams]) => {
+      if (teams.length >= 2) {
+        teamGameMap[teams[0]] = teams[1];
+        teamGameMap[teams[1]] = teams[0];
+      }
+    });
+
+    function deriveOdds(abPerHr) {
+      const abph = parseFloat(abPerHr);
+      if (!abph || abph <= 0) return null;
+      const probPerAB = 1 / abph;
+      const p = 1 - Math.pow(1 - probPerAB, 3.5); // ~3.5 ABs per game
+      if (p <= 0 || p >= 1) return null;
+      const adj = p * 0.82; // bookmaker vig
+      return adj >= 0.5
+        ? `-${Math.round((adj / (1 - adj)) * 100)}`
+        : `+${Math.round(((1 - adj) / adj) * 100)}`;
+    }
+
+    const odds = players.map(player => {
+      const opponent = teamGameMap[player.team];
+      const game = opponent ? `${player.team} vs ${opponent}` : player.team;
+      const line = deriveOdds(player.abPerHr);
+      const confidence = player.HR >= 8 ? "High" : player.HR >= 5 ? "Med" : "Low";
+      const trend = player.HR >= 10 ? "up" : player.HR >= 6 ? "neutral" : "down";
+      return {
+        playerName: player.name, playerId: player.playerId, team: player.team,
+        HR: player.HR, abPerHr: player.abPerHr, game, line, confidence, trend,
+      };
+    }).filter(o => o.line !== null);
+
+    res.json(odds);
+  } catch (err) {
+    console.error("🚨 Error fetching analytics odds:", err.message);
+    res.status(500).json({ error: "Error fetching odds" });
   }
 });
 

@@ -18,6 +18,43 @@ const hrLeaderUrl =
 const getEasternDate = () =>
   DateTime.now().setZone("America/New_York").toISODate();
 
+async function fetchStatcastMetrics(year) {
+  const url = `https://baseballsavant.mlb.com/leaderboard/custom?year=${year}&type=batter&filter=&sort=4&sortDir=desc&min=50&selections=exit_velocity_avg,launch_angle_avg,barrel_batted_rate,hard_hit_percent&csv=true`;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0", "Accept": "text/csv" } });
+    if (!res.ok) return new Map();
+    const csv = await res.text();
+    const lines = csv.trim().split('\n');
+    if (lines.length < 2) return new Map();
+    const headers = lines[0].split(',').map(h => h.trim());
+    const idx = {
+      pid:      headers.indexOf('player_id'),
+      evo:      headers.indexOf('exit_velocity_avg'),
+      la:       headers.indexOf('launch_angle_avg'),
+      barrel:   headers.indexOf('barrel_batted_rate'),
+      hardHit:  headers.indexOf('hard_hit_percent'),
+    };
+    if (idx.pid === -1) return new Map();
+    const map = new Map();
+    for (const line of lines.slice(1)) {
+      const cols = line.split(',');
+      const pid = parseInt(cols[idx.pid]);
+      if (!pid) continue;
+      map.set(pid, {
+        exitVeloAvg: idx.evo  !== -1 ? parseFloat(cols[idx.evo])    || null : null,
+        launchAngle: idx.la   !== -1 ? parseFloat(cols[idx.la])     || null : null,
+        barrelPct:   idx.barrel !== -1 ? parseFloat(cols[idx.barrel]) || null : null,
+        hardHitPct:  idx.hardHit !== -1 ? parseFloat(cols[idx.hardHit]) || null : null,
+      });
+    }
+    console.log(`⚾ Statcast metrics loaded for ${map.size} players`);
+    return map;
+  } catch (err) {
+    console.error("🚨 Statcast fetch error:", err.message);
+    return new Map();
+  }
+}
+
 async function extractTopHittersWithFullStats() {
   try {
     console.log("📊 Fetching top HR hitters...");
@@ -77,6 +114,16 @@ async function extractTopHittersWithFullStats() {
         date: today,
       });
     }
+
+    // Merge Statcast metrics
+    const statcast = await fetchStatcastMetrics(currentYear);
+    players.forEach(p => {
+      const sc = statcast.get(p.playerId) || {};
+      p.exitVeloAvg = sc.exitVeloAvg ?? null;
+      p.launchAngle = sc.launchAngle ?? null;
+      p.barrelPct   = sc.barrelPct   ?? null;
+      p.hardHitPct  = sc.hardHitPct  ?? null;
+    });
 
     // Sort by HR
     players.sort((a, b) => b.HR - a.HR);

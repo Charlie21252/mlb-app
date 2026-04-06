@@ -36,6 +36,41 @@ async function getGameFeed(gameId) {
   }
 }
 
+async function getGameHighlights(gameId) {
+  const url = `https://statsapi.mlb.com/api/v1/game/${gameId}/content`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return new Map();
+    const data = await response.json();
+    const items = data?.highlights?.highlights?.items || [];
+    // Map: playerId (string) -> best videoUrl
+    // Each item may have multiple player_id keywords; prefer items whose title mentions "home run"
+    const map = new Map();
+    for (const item of items) {
+      const playerIdKeywords = (item.keywordsAll || []).filter(k => k.type === "player_id");
+      if (!playerIdKeywords.length) continue;
+      const videoUrl = item.playbacks?.find(p => p.name === "mp4Avc")?.url || null;
+      if (!videoUrl) continue;
+      // Skip Statcast data-viz clips — they have "Home Run" in the title but aren't broadcast footage
+      const isDataViz = (item.keywordsAll || []).some(k => k.type === "taxonomy" && k.value.includes("data-visualization"));
+      if (isDataViz) continue;
+      const isHR = /home.?run|homer/i.test(item.title || "")
+        || (item.keywordsAll || []).some(k => k.type === "taxonomy" && k.value === "home-run");
+      for (const kw of playerIdKeywords) {
+        const pid = kw.value;
+        // Only overwrite an existing entry if this one is a home run highlight
+        if (!map.has(pid) || isHR) {
+          map.set(pid, videoUrl);
+        }
+      }
+    }
+    return map;
+  } catch (err) {
+    console.error(`🚨 Error fetching highlights for game ${gameId}:`, err.message);
+    return new Map();
+  }
+}
+
 function extractFirstHomerunsFromPlays(plays) {
   const seen = {};
   const date = getTodayDate();
@@ -54,9 +89,10 @@ function extractFirstHomerunsFromPlays(plays) {
       homers.push({
         name,
         playerId,
+        playId: play.about?.playId || null,
         description: play.result.description || "Hit a home run",
         imageUrl: batter
-          ? `https://content.mlb.com/images/mlb/2025/players/headshots/${playerId}.jpg` 
+          ? `https://content.mlb.com/images/mlb/2025/players/headshots/${playerId}.jpg`
           : `https://robohash.org/${encodeURIComponent(name)}?set=set4`,
         launchSpeed: hitData.launchSpeed ? Number(hitData.launchSpeed).toFixed(1) : null,
         totalDistance: hitData.totalDistance || null,
@@ -105,8 +141,15 @@ async function getTodayHomeRunHitters() {
     let allHomers = [];
 
     for (const gameId of gamePks) {
-      const plays = await getGameFeed(gameId);
-      const homers = extractFirstHomerunsFromPlays(plays);
+      const [plays, highlightsMap] = await Promise.all([
+        getGameFeed(gameId),
+        getGameHighlights(gameId),
+      ]);
+      const homers = extractFirstHomerunsFromPlays(plays).map(homer => ({
+        ...homer,
+        gamePk: gameId,
+        videoUrl: highlightsMap.get(String(homer.playerId)) || null,
+      }));
       allHomers = [...allHomers, ...homers];
     }
 
@@ -125,4 +168,4 @@ async function runUpdate() {
 }
 
 // 👉 Instead of running immediately, export the function
-module.exports = { runUpdate, getTodayHomeRunHitters };
+module.exports = { runUpdate, getTodayHomeRunHitters, getGameHighlights };

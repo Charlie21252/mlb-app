@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { AnimatePresence } from "framer-motion";
+import HRCollage from "../components/HRCollage.jsx";
 
 const teamColors = {
   "New York Yankees": "#1C2F61", "Chicago Cubs": "#0E3386",
@@ -17,9 +19,16 @@ const teamColors = {
   "Los Angeles Angels": "#BA0046", "New York Mets": "#002D72",
 };
 
-function getLocalDate() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+function getDateWithOffset(offset) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+function formatDateLabel(offset) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 }
 
 function getApiBase() {
@@ -82,13 +91,20 @@ export default function HomePage() {
   const [homeruns, setHomeruns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const selectedDate = getLocalDate();
+  const [showCollage, setShowCollage] = useState(false);
+  const [collageHomeruns, setCollageHomeruns] = useState([]);
+  const [loadingHighlights, setLoadingHighlights] = useState(false);
+  const [dayOffset, setDayOffset] = useState(0); // 0 = today, -1 = yesterday
 
-  const fetchData = async () => {
+  const selectedDate = getDateWithOffset(dayOffset);
+
+  const fetchData = async (offset = dayOffset) => {
     setLoading(true);
     setError("");
+    setShowCollage(false);
     try {
-      const res = await fetch(`${getApiBase()}/daily_homeruns?date=${selectedDate}`);
+      const date = getDateWithOffset(offset);
+      const res = await fetch(`${getApiBase()}/daily_homeruns?date=${date}`);
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
       setHomeruns(data);
@@ -99,7 +115,7 @@ export default function HomePage() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(0); }, []);
 
   const handleUpdate = async () => {
     setLoading(true);
@@ -117,40 +133,104 @@ export default function HomePage() {
   return (
     <div className="page">
       <div className="page-header">
-        <p className="page-eyebrow">
-          {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-        </p>
+        {/* Day navigation */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 6 }}>
+          <button
+            onClick={() => { setDayOffset(-1); fetchData(-1); }}
+            disabled={dayOffset === -1 || loading}
+            style={{
+              background: "none", border: "none", cursor: dayOffset === -1 ? "default" : "pointer",
+              color: dayOffset === -1 ? "var(--text-muted)" : "var(--text-secondary)",
+              fontFamily: "var(--font-data)", fontSize: "0.72rem", letterSpacing: "0.1em",
+              textTransform: "uppercase", padding: "4px 8px", opacity: dayOffset === -1 ? 0.35 : 1,
+              transition: "opacity 0.15s",
+            }}
+          >
+            ‹ Yesterday
+          </button>
+          <span style={{
+            fontFamily: "var(--font-data)", fontSize: "0.72rem", letterSpacing: "0.1em",
+            textTransform: "uppercase", color: "var(--text-muted)",
+          }}>
+            {formatDateLabel(dayOffset)}
+          </span>
+          <button
+            onClick={() => { setDayOffset(0); fetchData(0); }}
+            disabled={dayOffset === 0 || loading}
+            style={{
+              background: "none", border: "none", cursor: dayOffset === 0 ? "default" : "pointer",
+              color: dayOffset === 0 ? "var(--text-muted)" : "var(--text-secondary)",
+              fontFamily: "var(--font-data)", fontSize: "0.72rem", letterSpacing: "0.1em",
+              textTransform: "uppercase", padding: "4px 8px", opacity: dayOffset === 0 ? 0.35 : 1,
+              transition: "opacity 0.15s",
+            }}
+          >
+            Today ›
+          </button>
+        </div>
+
         <h1 className="page-title">
-          Today's <span className="accent">Bombs</span>
+          {dayOffset === 0 ? "Today's" : "Yesterday's"} <span className="accent">Bombs</span>
         </h1>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
           {!loading && !error && (
             <span className="stat-pill">
-              {homeruns.length} HR{homeruns.length !== 1 ? "s" : ""} today
+              {homeruns.length} HR{homeruns.length !== 1 ? "s" : ""}
             </span>
           )}
-          <button
-            className="btn btn-red"
-            onClick={handleUpdate}
-            disabled={loading}
-          >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M13.65 2.35A8 8 0 1 0 15 8h-2a6 6 0 1 1-1.05-3.37L10 6h5V1l-1.35 1.35z" fill="currentColor"/>
-            </svg>
-            {loading ? "Updating…" : "Update Now"}
-          </button>
+          {!loading && !error && homeruns.length > 0 && (
+            <button
+              className="btn btn-gold"
+              disabled={loadingHighlights}
+              onClick={async () => {
+                setLoadingHighlights(true);
+                try {
+                  const res = await fetch(`${getApiBase()}/highlights?date=${selectedDate}`);
+                  const videoMap = res.ok ? await res.json() : {};
+                  setCollageHomeruns(homeruns.map(hr => ({
+                    ...hr,
+                    videoUrl: videoMap[String(hr.playerId)] || hr.videoUrl || null,
+                  })));
+                } catch {
+                  setCollageHomeruns(homeruns);
+                } finally {
+                  setLoadingHighlights(false);
+                  setShowCollage(true);
+                }
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <polygon points="5,2 14,8 5,14" fill="currentColor"/>
+              </svg>
+              {loadingHighlights ? "Loading…" : "Watch Highlights"}
+            </button>
+          )}
+          {dayOffset === 0 && (
+            <button
+              className="btn btn-red"
+              onClick={handleUpdate}
+              disabled={loading}
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M13.65 2.35A8 8 0 1 0 15 8h-2a6 6 0 1 1-1.05-3.37L10 6h5V1l-1.35 1.35z" fill="currentColor"/>
+              </svg>
+              {loading ? "Updating…" : "Update Now"}
+            </button>
+          )}
         </div>
 
-        <p style={{
-          fontFamily: "var(--font-data)", fontSize: "0.72rem", color: "var(--text-muted)",
-          letterSpacing: "0.08em", textTransform: "uppercase", marginTop: 10, marginBottom: 0,
-        }}>
-          Auto-refreshes every 30 min
-        </p>
+        {dayOffset === 0 && (
+          <p style={{
+            fontFamily: "var(--font-data)", fontSize: "0.72rem", color: "var(--text-muted)",
+            letterSpacing: "0.08em", textTransform: "uppercase", marginTop: 10, marginBottom: 0,
+          }}>
+            Auto-refreshes every 30 min
+          </p>
+        )}
       </div>
 
-      {loading && <p className="loading-text">Loading today's home runs…</p>}
+      {loading && <p className="loading-text">Loading home runs…</p>}
 
       {error && (
         <div className="state-box error">
@@ -161,8 +241,8 @@ export default function HomePage() {
 
       {!loading && !error && homeruns.length === 0 && (
         <div className="state-box">
-          <p className="state-title">No home runs yet today</p>
-          <p className="state-desc">Games may not have started, or no home runs have been hit yet. Check back soon.</p>
+          <p className="state-title">{dayOffset === 0 ? "No home runs yet today" : "No home runs found"}</p>
+          <p className="state-desc">{dayOffset === 0 ? "Games may not have started, or no home runs have been hit yet. Check back soon." : "No home run data was recorded for this date."}</p>
         </div>
       )}
 
@@ -247,6 +327,12 @@ export default function HomePage() {
           MLB StatsAPI · {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </p>
       )}
+
+      <AnimatePresence>
+        {showCollage && (
+          <HRCollage homeruns={collageHomeruns} onClose={() => setShowCollage(false)} dayOffset={dayOffset} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

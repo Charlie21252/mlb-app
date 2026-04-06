@@ -283,6 +283,17 @@ body::before {
   transform: translateY(-1px);
   box-shadow: 0 4px 16px var(--blue-glow);
 }
+.btn-gold {
+  background: var(--gold);
+  color: #0a0e17;
+  border-color: var(--gold);
+}
+.btn-gold:hover:not(:disabled) {
+  background: #f5c842;
+  border-color: #f5c842;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4);
+}
 
 .btn-ghost {
   background: transparent;

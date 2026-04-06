@@ -29,10 +29,10 @@ export default function TaskBar() {
   return (
     <>
       <nav className="nav">
-        <div className="nav-logo">
+        <Link to="/" className="nav-logo" style={{ textDecoration: "none", color: "inherit" }}>
           <BaseballIcon />
           HOMERS
-        </div>
+        </Link>
 
         {/* Desktop nav */}
         <div className="nav-links">
