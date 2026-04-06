@@ -9,7 +9,20 @@ const cardVariants = {
   }),
 };
 
-function VideoCard({ homer, index, onClick }) {
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(pointer: coarse)");
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
+
+function VideoCard({ homer, index, onClick, isMobile }) {
   const videoRef = useRef(null);
   const [hovered, setHovered] = useState(false);
 
@@ -26,11 +39,10 @@ function VideoCard({ homer, index, onClick }) {
       variants={cardVariants}
       initial="hidden"
       animate="visible"
-      whileHover={{ scale: 1.04 }}
-      transition={{ type: "spring", stiffness: 300, damping: 24 }}
+      whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => !isMobile && setHovered(true)}
+      onMouseLeave={() => !isMobile && setHovered(false)}
       style={{
         position: "relative", borderRadius: 12, overflow: "hidden",
         cursor: "pointer", aspectRatio: "16/9", background: "#0d1117",
@@ -59,6 +71,25 @@ function VideoCard({ homer, index, onClick }) {
         />
       )}
 
+      {/* Play icon overlay on mobile */}
+      {isMobile && homer.videoUrl && (
+        <div style={{
+          position: "absolute", inset: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          pointerEvents: "none",
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: "50%",
+            background: "rgba(0,0,0,0.55)", border: "2px solid rgba(255,255,255,0.7)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <polygon points="5,2 14,8 5,14" fill="white"/>
+            </svg>
+          </div>
+        </div>
+      )}
+
       {/* Always-visible name bar at bottom */}
       <div style={{
         position: "absolute", bottom: 0, left: 0, right: 0,
@@ -85,7 +116,7 @@ function VideoCard({ homer, index, onClick }) {
   );
 }
 
-function FullscreenView({ homer, onPrev, onNext, hasPrev, hasNext }) {
+function FullscreenView({ homer, onPrev, onNext, hasPrev, hasNext, isMobile }) {
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -101,7 +132,7 @@ function FullscreenView({ homer, onPrev, onNext, hasPrev, hasNext }) {
       transition={{ type: "spring", stiffness: 300, damping: 28 }}
       style={{
         position: "absolute", inset: 0,
-        background: "#000", borderRadius: 12, overflow: "hidden",
+        background: "#000", borderRadius: isMobile ? 8 : 12, overflow: "hidden",
       }}
     >
       {homer.videoUrl ? (
@@ -134,49 +165,59 @@ function FullscreenView({ homer, onPrev, onNext, hasPrev, hasNext }) {
         </div>
       )}
 
-      {/* Player info overlay */}
-      <div style={{
-        position: "absolute", bottom: 0, left: 0, right: 0,
-        background: "linear-gradient(to top, rgba(0,0,0,0.85), transparent)",
-        padding: "32px 20px 16px", pointerEvents: "none",
-      }}>
-        <div style={{ fontFamily: "var(--font-display)", fontSize: "1.3rem", color: "#fff" }}>
-          {homer.name}
-        </div>
+      {/* Player info overlay — only shown when no video controls */}
+      {!homer.videoUrl && (
         <div style={{
-          display: "flex", gap: 14, marginTop: 4,
-          fontFamily: "var(--font-data)", fontSize: "0.72rem",
-          color: "var(--gold)", letterSpacing: "0.1em", textTransform: "uppercase",
+          position: "absolute", bottom: 0, left: 0, right: 0,
+          background: "linear-gradient(to top, rgba(0,0,0,0.85), transparent)",
+          padding: "32px 20px 16px", pointerEvents: "none",
         }}>
-          {homer.totalDistance && <span>{homer.totalDistance} ft</span>}
-          {homer.launchSpeed && <span>{homer.launchSpeed} mph exit velo</span>}
+          <div style={{ fontFamily: "var(--font-display)", fontSize: "1.3rem", color: "#fff" }}>
+            {homer.name}
+          </div>
+          <div style={{
+            display: "flex", gap: 14, marginTop: 4,
+            fontFamily: "var(--font-data)", fontSize: "0.72rem",
+            color: "var(--gold)", letterSpacing: "0.1em", textTransform: "uppercase",
+          }}>
+            {homer.totalDistance && <span>{homer.totalDistance} ft</span>}
+            {homer.launchSpeed && <span>{homer.launchSpeed} mph exit velo</span>}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Prev / Next arrows */}
       {hasPrev && (
-        <button onClick={onPrev} style={arrowStyle("left")} aria-label="Previous">‹</button>
+        <button onClick={onPrev} style={arrowStyle("left", isMobile)} aria-label="Previous">‹</button>
       )}
       {hasNext && (
-        <button onClick={onNext} style={arrowStyle("right")} aria-label="Next">›</button>
+        <button onClick={onNext} style={arrowStyle("right", isMobile)} aria-label="Next">›</button>
       )}
     </motion.div>
   );
 }
 
-function arrowStyle(side) {
+function arrowStyle(side, isMobile) {
+  const size = isMobile ? 52 : 44;
   return {
-    position: "absolute", top: "50%", [side]: 14,
-    transform: "translateY(-50%)",
-    background: "rgba(255,255,255,0.15)", border: "none",
-    borderRadius: "50%", width: 44, height: 44,
-    color: "#fff", fontSize: "1.8rem", lineHeight: "42px", textAlign: "center",
+    position: "absolute",
+    top: isMobile ? "auto" : "50%",
+    bottom: isMobile ? 56 : "auto",
+    [side]: isMobile ? 8 : 14,
+    transform: isMobile ? "none" : "translateY(-50%)",
+    background: "rgba(255,255,255,0.18)",
+    border: "1px solid rgba(255,255,255,0.25)",
+    borderRadius: "50%",
+    width: size, height: size,
+    color: "#fff", fontSize: isMobile ? "2rem" : "1.8rem",
+    lineHeight: `${size - 2}px`, textAlign: "center",
     cursor: "pointer", zIndex: 10,
   };
 }
 
 export default function HRCollage({ homeruns, onClose, dayOffset = 0 }) {
   const [focused, setFocused] = useState(null);
+  const isMobile = useIsMobile();
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -210,7 +251,7 @@ export default function HRCollage({ homeruns, onClose, dayOffset = 0 }) {
       transition={{ duration: 0.22 }}
       style={{
         position: "fixed", inset: 0, zIndex: 1000,
-        background: "rgba(5, 10, 18, 0.95)",
+        background: "rgba(5, 10, 18, 0.97)",
         backdropFilter: "blur(10px)",
         display: "flex", flexDirection: "column",
       }}
@@ -218,42 +259,55 @@ export default function HRCollage({ homeruns, onClose, dayOffset = 0 }) {
       {/* ── Header ── */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "14px 20px",
+        padding: isMobile ? "10px 14px" : "14px 20px",
         borderBottom: "1px solid rgba(255,255,255,0.08)",
-        flexShrink: 0, zIndex: 10,
+        flexShrink: 0, zIndex: 10, gap: 12,
       }}>
-        {/* Emblem back button — mirrors the TaskBar logo position */}
+        {/* Back button */}
         <button
           onClick={() => inVideo ? setFocused(null) : onClose()}
           style={{
-            display: "flex", alignItems: "center", gap: 8,
-            background: "none", border: "none", cursor: "pointer",
-            padding: "4px 6px", borderRadius: 8,
-            color: "var(--gold)", transition: "opacity 0.15s",
+            display: "flex", alignItems: "center", gap: 6,
+            background: "rgba(255,255,255,0.07)",
+            border: "1px solid rgba(255,255,255,0.14)",
+            borderRadius: 8,
+            cursor: "pointer",
+            padding: isMobile ? "8px 14px" : "7px 14px",
+            color: "var(--text-secondary)",
+            fontFamily: "var(--font-data)",
+            fontSize: isMobile ? "0.82rem" : "0.78rem",
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            transition: "all 0.15s",
+            flexShrink: 0,
+            minWidth: 0,
+            whiteSpace: "nowrap",
+            WebkitTapHighlightColor: "transparent",
           }}
-          onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
-          onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-          aria-label={inVideo ? "Back to highlights" : "Close"}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = "rgba(255,255,255,0.12)";
+            e.currentTarget.style.color = "var(--text)";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = "rgba(255,255,255,0.07)";
+            e.currentTarget.style.color = "var(--text-secondary)";
+          }}
+          aria-label={inVideo ? "Back to highlights grid" : "Back to home"}
         >
-          <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="13" cy="13" r="12" fill="#102035" stroke="#e8b84b" strokeWidth="1.4"/>
-            <path d="M7.5 7 Q13 13 7.5 19" stroke="#e8b84b" strokeWidth="1.1" fill="none" strokeLinecap="round"/>
-            <path d="M18.5 7 Q13 13 18.5 19" stroke="#e8b84b" strokeWidth="1.1" fill="none" strokeLinecap="round"/>
-            <path d="M8.5 8L7.2 6.8M9.2 10.2L7.8 9.6M9 12.8L7.5 12.5M9 15.2L7.5 15.5M9.2 17.4L7.8 18" stroke="#e8b84b" strokeWidth="0.7" strokeLinecap="round"/>
-            <path d="M17.5 8L18.8 6.8M16.8 10.2L18.2 9.6M17 12.8L18.5 12.5M17 15.2L18.5 15.5M16.8 17.4L18.2 18" stroke="#e8b84b" strokeWidth="0.7" strokeLinecap="round"/>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span style={{
-            fontFamily: "var(--font-display)", fontSize: "0.95rem",
-            color: "#e8b84b", letterSpacing: "0.08em",
-          }}>
-            HOMERS
-          </span>
+          {inVideo ? "All Clips" : "Back"}
         </button>
 
-        <div style={{ textAlign: "right" }}>
+        {/* Title + count */}
+        <div style={{ textAlign: "right", minWidth: 0 }}>
           <div style={{
-            fontFamily: "var(--font-display)", fontSize: "1.1rem",
+            fontFamily: "var(--font-display)",
+            fontSize: isMobile ? "0.95rem" : "1.1rem",
             color: "var(--text)", letterSpacing: "0.02em",
+            whiteSpace: "nowrap",
           }}>
             {dayOffset === 0 ? "Today's" : "Yesterday's"}{" "}
             <span style={{ color: "var(--gold)" }}>Highlights</span>
@@ -265,7 +319,9 @@ export default function HRCollage({ homeruns, onClose, dayOffset = 0 }) {
           }}>
             {inVideo
               ? `${focused + 1} of ${homeruns.length}`
-              : `${homeruns.length} home run${homeruns.length !== 1 ? "s" : ""} · hover to preview`}
+              : isMobile
+                ? `${homeruns.length} home run${homeruns.length !== 1 ? "s" : ""} · tap to watch`
+                : `${homeruns.length} home run${homeruns.length !== 1 ? "s" : ""} · hover to preview`}
           </div>
         </div>
       </div>
@@ -282,10 +338,12 @@ export default function HRCollage({ homeruns, onClose, dayOffset = 0 }) {
               transition={{ duration: 0.18 }}
               style={{
                 height: "100%", overflowY: "auto",
-                padding: "18px 20px 32px",
+                padding: isMobile ? "12px 12px 24px" : "18px 20px 32px",
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-                gap: 12,
+                gridTemplateColumns: isMobile
+                  ? "repeat(auto-fill, minmax(min(160px, 100%), 1fr))"
+                  : "repeat(auto-fill, minmax(260px, 1fr))",
+                gap: isMobile ? 8 : 12,
                 alignContent: "start",
               }}
             >
@@ -295,6 +353,7 @@ export default function HRCollage({ homeruns, onClose, dayOffset = 0 }) {
                   homer={homer}
                   index={i}
                   onClick={() => setFocused(i)}
+                  isMobile={isMobile}
                 />
               ))}
             </motion.div>
@@ -305,7 +364,10 @@ export default function HRCollage({ homeruns, onClose, dayOffset = 0 }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
-              style={{ position: "relative", height: "100%", padding: 12 }}
+              style={{
+                position: "relative", height: "100%",
+                padding: isMobile ? 8 : 12,
+              }}
             >
               <AnimatePresence mode="wait">
                 <FullscreenView
@@ -315,6 +377,7 @@ export default function HRCollage({ homeruns, onClose, dayOffset = 0 }) {
                   onNext={() => setFocused(f => Math.min(homeruns.length - 1, f + 1))}
                   hasPrev={focused > 0}
                   hasNext={focused < homeruns.length - 1}
+                  isMobile={isMobile}
                 />
               </AnimatePresence>
             </motion.div>
