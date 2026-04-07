@@ -92,16 +92,23 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showCollage, setShowCollage] = useState(false);
-  const [collageHomeruns, setCollageHomeruns] = useState([]);
-  const [loadingHighlights, setLoadingHighlights] = useState(false);
+  const [collageStartIndex, setCollageStartIndex] = useState(0);
+  const [videoMap, setVideoMap] = useState({});
   const [dayOffset, setDayOffset] = useState(0); // 0 = today, -1 = yesterday
 
   const selectedDate = getDateWithOffset(dayOffset);
+
+  // Merge video URLs into homeruns
+  const homerRunsWithVideos = homeruns.map(hr => ({
+    ...hr,
+    videoUrl: videoMap[String(hr.playerId)] || hr.videoUrl || null,
+  }));
 
   const fetchData = async (offset = dayOffset) => {
     setLoading(true);
     setError("");
     setShowCollage(false);
+    setVideoMap({});
     try {
       const date = getDateWithOffset(offset);
       const res = await fetch(`${getApiBase()}/daily_homeruns?date=${date}`);
@@ -114,6 +121,15 @@ export default function HomePage() {
       setLoading(false);
     }
   };
+
+  // Fetch highlights in background whenever homeruns load
+  useEffect(() => {
+    if (homeruns.length === 0) return;
+    fetch(`${getApiBase()}/highlights?date=${selectedDate}`)
+      .then(r => r.ok ? r.json() : {})
+      .then(map => setVideoMap(map))
+      .catch(() => {});
+  }, [homeruns, selectedDate]);
 
   useEffect(() => { fetchData(0); }, []);
 
@@ -182,28 +198,12 @@ export default function HomePage() {
           {!loading && !error && homeruns.length > 0 && (
             <button
               className="btn btn-gold"
-              disabled={loadingHighlights}
-              onClick={async () => {
-                setLoadingHighlights(true);
-                try {
-                  const res = await fetch(`${getApiBase()}/highlights?date=${selectedDate}`);
-                  const videoMap = res.ok ? await res.json() : {};
-                  setCollageHomeruns(homeruns.map(hr => ({
-                    ...hr,
-                    videoUrl: videoMap[String(hr.playerId)] || hr.videoUrl || null,
-                  })));
-                } catch {
-                  setCollageHomeruns(homeruns);
-                } finally {
-                  setLoadingHighlights(false);
-                  setShowCollage(true);
-                }
-              }}
+              onClick={() => { setCollageStartIndex(0); setShowCollage(true); }}
             >
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <polygon points="5,2 14,8 5,14" fill="currentColor"/>
               </svg>
-              {loadingHighlights ? "Loading…" : "Watch Highlights"}
+              Watch Highlights
             </button>
           )}
           {dayOffset === 0 && (
@@ -246,9 +246,9 @@ export default function HomePage() {
         </div>
       )}
 
-      {!loading && !error && homeruns.length > 0 && (
+      {!loading && !error && homerRunsWithVideos.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {homeruns.map((player, index) => {
+          {homerRunsWithVideos.map((player, index) => {
             const accentColor = teamColors[player.team] || "var(--gold)";
             return (
               <div
@@ -316,6 +316,21 @@ export default function HomePage() {
                     />
                   </div>
                 </div>
+
+                {/* Watch homer button */}
+                {player.videoUrl && (
+                  <div className="hr-card-watch">
+                    <button
+                      className="btn-watch"
+                      onClick={() => { setCollageStartIndex(index); setShowCollage(true); }}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <polygon points="4,2 14,8 4,14" fill="currentColor"/>
+                      </svg>
+                      Watch Home Run
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -330,7 +345,12 @@ export default function HomePage() {
 
       <AnimatePresence>
         {showCollage && (
-          <HRCollage homeruns={collageHomeruns} onClose={() => setShowCollage(false)} dayOffset={dayOffset} />
+          <HRCollage
+            homeruns={homerRunsWithVideos}
+            onClose={() => setShowCollage(false)}
+            dayOffset={dayOffset}
+            startIndex={collageStartIndex}
+          />
         )}
       </AnimatePresence>
     </div>

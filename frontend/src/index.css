@@ -92,8 +92,16 @@ body::before {
   gap: 10px;
   margin-right: auto;
   flex-shrink: 0;
-  cursor: default;
+  cursor: pointer;
   user-select: none;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition), opacity var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-logo:hover {
+  background: var(--gold-dim);
+  opacity: 0.88;
 }
 
 .nav-links {
@@ -498,6 +506,43 @@ body::before {
   gap: 16px;
 }
 
+/* ── Watch Homer button row in HR card ───────────── */
+
+.hr-card-watch {
+  border-top: 1px solid var(--border-subtle);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+}
+
+.btn-watch {
+  font-family: var(--font-data);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(232, 184, 75, 0.35);
+  background: var(--gold-dim);
+  color: var(--gold);
+  cursor: pointer;
+  transition: all var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-watch:hover {
+  background: rgba(232, 184, 75, 0.18);
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+.btn-watch:active {
+  transform: translateY(0);
+}
+
 /* ── Mobile ──────────────────────────────────────── */
 
 @media (max-width: 640px) {
@@ -571,4 +616,11 @@ body::before {
   .betting-row { flex-wrap: wrap; gap: 10px; }
 
   .page-header { margin-bottom: 28px; }
+
+  /* Watch button full-width on mobile */
+  .hr-card-watch { padding: 10px 12px; }
+  .btn-watch { width: 100%; justify-content: center; padding: 12px 18px; font-size: 0.82rem; }
+
+  /* Larger touch targets for nav */
+  .nav-logo { padding: 4px 6px; }
 }
